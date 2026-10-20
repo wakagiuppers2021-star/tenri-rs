@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import tenri_rs_rika1 as R1
 import tenri_rs_rika2 as R2
 import tenri_rs_rika3 as R3
+import tenri_rs_rika4 as R4
 import tenri_rs_shakai1 as S1
 import tenri_rs_shakai2 as S2
 import tenri_rs_shakai3 as S3
@@ -363,6 +364,128 @@ eq('理3-10(4) 葉の裏', ans(R3, 10, 4), f'{bottom10:.1f}mL')
 eq('理3-10(5) 葉の表', ans(R3, 10, 5), f'{top10:.1f}mL')
 eq('理3-10(6) くき', ans(R3, 10, 6), f'{stem:.1f}mL')
 eq('理3-10(7) 蒸散がさかんな面', ans(R3, 10, 7), '裏' if bottom10 > top10 else '表')
+
+# ---------------- 理科・大問4 ----------------
+# 1 発芽：表から、1つの条件だけがちがう組を探す
+rows = R4.SETS[0]['table']['rows']
+cols = rows[0][1:]
+cond41 = {lab: {rows[r][0]: rows[r][k + 1] for r in range(1, 5)} for k, lab in enumerate(cols)}
+germ = {lab: int(rows[5][k + 1][:-1]) for k, lab in enumerate(cols)}
+only41 = lambda name: [f'{a}と{b}' for a, b in itertools.combinations(cols, 2)
+                       if all((cond41[a][n] == cond41[b][n]) != (n == name) for n in cond41[a])]
+for q, name in ((1, '水'), (2, '空気'), (3, '温度')):
+    assert len(only41(name)) == 1
+    eq(f'理4-1({q}) {name}を比べる組', ans(R4, 1, q), only41(name)[0])
+assert only41('光') == ['AとE'] and germ['A'] == germ['E']
+eq('理4-1(4) 光', ans(R4, 1, 4), '発芽に光は必要ない')
+eq('理4-1(5) 発芽の割合', ans(R4, 1, 5), f'{germ["A"] * 100 // 10}%')
+
+# 2 雲：西にあるものから東へ動く
+bl = R4.SETS[1]['fig']['args']['blobs']
+eq('理4-2(1) 時間の順', ans(R4, 2, 1), '→'.join('アイウエ'[i] for i in sorted(range(len(bl)), key=lambda i: bl[i][0])))
+eq('理4-2(2) 雲の動く向き', ans(R4, 2, 2), [k for k, v in choices(q_text(R4, 2, 2)).items() if v == '西から東へ'][0])
+eq('理4-2(6) 着くまでの時間', ans(R4, 2, 6), f'{600 // 50}時間後')
+
+# 3 燃え方
+o43 = choices(q_text(R4, 3, 1))
+eq('理4-3(1) 火が消える理由', ans(R4, 3, 1), [k for k, v in o43.items() if v == '酸素が少なくなったから'][0])
+steps = ['検知管の両はしを折る', '検知管をポンプにつなぎ', 'ハンドルを引いて', '色が変わった目盛りを読む']
+o44 = choices(q_text(R4, 3, 4))
+eq('理4-3(4) 検知管の順', ans(R4, 3, 4), '→'.join([k for k, v in o44.items() if st in v][0] for st in steps))
+eq('理4-3(5) 使われた酸素', ans(R4, 3, 5), f'{num(1200 * (21 - 16) / 100)}mL')
+eq('理4-3(6) スチールウール', ans(R4, 3, 6), [f'{num(6.5 - 5.0)}g', '酸素'])
+
+# 4 種子のつくり
+seed = {'ア': '種皮', 'イ': '子葉', 'ウ': 'はい'}
+eq('理4-4(1) 図の名前', ans(R4, 4, 1), [seed[k] for k in 'アイウ'])
+eq('理4-4(2) 根・くき・葉になる', ans(R4, 4, 2), [k for k, v in seed.items() if v == 'はい'][0])
+eq('理4-4(3) 養分をたくわえる', ans(R4, 4, 3), [k for k, v in seed.items() if v == '子葉'][0])
+need = {'日光': True, '水': True, '二酸化炭素': True, '酸素': False, '土': False}
+eq('理4-4(8) 光合成に必要なもの', ans(R4, 4, 8), join(k for k, v in choices(q_text(R4, 4, 8)).items() if need[v]))
+
+# 5 さおばかり：（重さ）×（支点からのきょり）が左右で等しい
+fa = R4.SETS[4]['fig']['args']
+plate, pos, wt = fa['plate'], fa['pos'], 60
+eq('理4-5(1) さらの物', ans(R4, 5, 1), f'{num(wt * pos / plate)}g')
+eq('理4-5(2) おもりの位置', ans(R4, 5, 2), f'{num(150 * plate / wt)}cm')
+eq('理4-5(3) 最大の重さ', ans(R4, 5, 3), f'{num(wt * 50 / plate)}g')
+maxw = lambda weight, d: weight * 50 / d
+eq('理4-5(4) おもりを重く', ans(R4, 5, 4), '大きくなる' if maxw(100, plate) > maxw(wt, plate) else '小さくなる')
+at = lambda w_: w_ * plate / wt
+eq('理4-5(5) 物を重く', ans(R4, 5, 5), '遠くなる' if at(300) > at(150) else '近くなる')
+eq('理4-5(6) 支点を近づける', ans(R4, 5, 6), '大きくなる' if wt * pos / (plate / 2) > wt * pos / plate else '小さくなる')
+arm = {'ひじの関節': '支点', '筋肉がつく所': '力点', '物を持つ手': '作用点'}
+eq('理4-5(7) うでのてこ', ans(R4, 5, 7), [arm[k] for k in R4.SETS[4]['qs'][6]['labels']])
+mid5 = {'一輪車': '作用点', 'ピンセット': '力点', 'せんぬき': '作用点', 'ペンチ': '支点'}      # 3つの点の真ん中にあるもの
+eq('理4-5(8) 作用点が真ん中', ans(R4, 5, 8), join(k for k, v in choices(q_text(R4, 5, 8)).items() if mid5[v] == '作用点'))
+
+# 6 ふりこ：1往復の時間は、長さの平方根に比例する
+rows = R4.SETS[5]['table']['rows']
+Ls = [int(v) for v in rows[0][1:]]
+T = {L: float(v) / 10 for L, v in zip(Ls, rows[1][1:])}                  # 1往復の時間
+k6 = T[20] / math.sqrt(20)
+for L in Ls:
+    assert abs(T[L] - k6 * math.sqrt(L)) < .06, (L, T[L])               # 表が平方根の関係になっている
+eq('理4-6(1) ふりこの長さ', ans(R4, 6, 1), f'{28 + 4 // 2}cm')
+eq('理4-6(2) 20cmの1往復', ans(R4, 6, 2), f'{T[20]}秒')
+eq('理4-6(3) 4倍の長さ', ans(R4, 6, 3), f'{round(T[80] / T[20])}倍')
+eq('理4-6(4) 320cm', ans(R4, 6, 4), f'{num(T[20] * math.sqrt(320 / 20))}秒')
+eq('理4-6(5) 180cm', ans(R4, 6, 5), f'{num(T[20] * math.sqrt(180 / 20))}秒')
+eq('理4-6(6) 1分間の往復', ans(R4, 6, 6), f'{num(60 / 1.2)}往復')
+eq('理4-6(7) 1.8秒の長さ', ans(R4, 6, 7), f'{[L for L in Ls if T[L] == 1.8][0]}cm')
+o46 = choices(q_text(R4, 6, 8))
+eq('理4-6(8) 時計のおくれ', ans(R4, 6, 8), [k for k, v in o46.items() if v == 'ふりこを短くする'][0])
+
+# 7 茎：Aは管が輪のようにならぶ（ホウセンカなど）、Bは散らばる（トウモロコシなど）
+kind7 = {'A': 'ring', 'B': 'scatter'}
+plant7 = {'ホウセンカ': 'ring', 'トウモロコシ': 'scatter'}
+eq('理4-7(2) ホウセンカの茎', ans(R4, 7, 2), [k for k, v in kind7.items() if v == plant7['ホウセンカ']][0])
+eq('理4-7(6) 葉から出た水', ans(R4, 7, 6), f'{(50 - 38) - (50 - 46)}mL')
+
+# 8 回路：電池の電圧=1×個数（直列）、豆電球の抵抗=1。明るさは、豆電球を流れる電流で決まる
+specs = R4.SETS[7]['fig']['args']['specs']
+def circuit(cell, bulb):
+    V = 2 if cell == 'series' else 1
+    R = {'one': 1, 'series': 2, 'parallel': .5, 'none': 0}[bulb]
+    if R == 0:
+        return None
+    I = V / R
+    i_bulb = I / 2 if bulb == 'parallel' else I
+    i_cell = I / 2 if cell == 'parallel' else I
+    return round(i_bulb, 6), round(i_cell, 6)
+res8 = {lab: circuit(*sp) for lab, sp in zip('アイウエオカ', specs)}
+base8 = res8['ア'][0]
+eq('理4-8(1) ショート', ans(R4, 8, 1), join(k for k, v in res8.items() if v is None))
+eq('理4-8(2) 明るい', ans(R4, 8, 2), join(k for k, v in res8.items() if v and v[0] > base8))
+eq('理4-8(3) 同じ明るさ', ans(R4, 8, 3), join(k for k, v in res8.items() if v and k != 'ア' and v[0] == base8))
+eq('理4-8(4) 暗い', ans(R4, 8, 4), join(k for k, v in res8.items() if v and v[0] < base8))
+low8 = min(v[1] for v in res8.values() if v)
+eq('理4-8(5) 長もち', ans(R4, 8, 5), join(k for k, v in res8.items() if v and v[1] == low8))
+eq('理4-8(9) 電池のつなぎ方', ans(R4, 8, 9), [{'series': '直列つなぎ', 'parallel': '並列つなぎ'}[specs['アイウエオカ'.index(k)][0]] for k in 'イウ'])
+
+# 9 気温：晴れは1日の変化が大きく、雨は小さい
+ln = dict(R4.SETS[8]['fig']['args']['lines'])
+span = {k: max(v for _, v in pts) - min(v for _, v in pts) for k, pts in ln.items()}
+eq('理4-9(1) 晴れの日', ans(R4, 9, 1), max(span, key=span.get))
+eq('理4-9(2) 雨の日', ans(R4, 9, 2), min(span, key=span.get))
+eq('理4-9(3) 気温の差', ans(R4, 9, 3), f'{num(span["ア"])}℃')
+at_ = lambda k, h: [v for t, v in ln[k] if t == h][0]
+eq('理4-9(8) 平均', ans(R4, 9, 8), f'{(at_("ウ", 9) + at_("ウ", 12) + at_("ウ", 15)) / 3:.1f}℃')
+
+# 10 アルミニウムと塩酸：とけた量に比例して水素が出る。塩酸50mLでとける量には上限がある
+rows = R4.SETS[9]['table']['rows']
+mass = [float(v) for v in rows[0][1:]]
+gas10 = [float(v) for v in rows[1][1:]]
+rate10 = gas10[0] / mass[0]
+assert all(abs(g - rate10 * m) < 1e-6 for m, g, r in zip(mass, gas10, rows[2][1:]) if r == 'なし')
+cap10 = max(g for g in gas10) / rate10                                    # 50mLの塩酸にとける最大のアルミニウム
+eq('理4-10(3) 0.25g', ans(R4, 10, 3), f'{num(rate10 * 0.25)}mL')
+assert 810 / rate10 <= cap10 * 2
+eq('理4-10(4) 810mL', ans(R4, 10, 4), f'{num(810 / rate10)}g')
+eq('理4-10(5) とけ残り', ans(R4, 10, 5), f'{num(0.5 - cap10)}g')
+eq('理4-10(6) 最大', ans(R4, 10, 6), f'{num(cap10)}g')
+dissolves = {'鉄': True, '銅': False, 'マグネシウム': True, '亜鉛': True}
+eq('理4-10(8) 塩酸にとけない', ans(R4, 10, 8), [k for k, v in choices(q_text(R4, 10, 8)).items() if not dissolves[v]][0])
 
 # ---------------- 社会・大問1 ----------------
 capital = {'青森県': '青森市', '静岡県': '静岡市', '京都府': '京都市', '香川県': '高松市', '新潟県': '新潟市',

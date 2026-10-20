@@ -66,6 +66,11 @@ def text(c, x, y, s, size=10, bold=False, color=INK, center=False):
     return w
 
 
+def _word(ch):
+    """数字・英字・小数点・%（行の途中で切りたくない文字）。"""
+    return ch.isascii() and (ch.isalnum() or ch in '.%')
+
+
 def wrap(s, width, size=10, bold=False):
     out = []
     for part in s.split('\n'):
@@ -75,6 +80,16 @@ def wrap(s, width, size=10, bold=False):
                 if ch in '、。）」』】・,.' and len(line) > 1:
                     out.append(line[:-1])
                     line = line[-1] + ch
+                elif _word(ch) and _word(line[-1]):
+                    k = len(line)
+                    while k > 0 and _word(line[k - 1]):
+                        k -= 1
+                    if k > 0:
+                        out.append(line[:k])
+                        line = line[k:] + ch
+                    else:
+                        out.append(line)
+                        line = ch
                 else:
                     out.append(line)
                     line = ch
@@ -555,8 +570,9 @@ def fig_sanken(c, x, top, w, h):
         badge((sx + ex) / 2, (sy + ey) / 2, lab, MUTED)
 
 
-def fig_linegraph(c, x, top, w, h, pts=(), xmax=24, xstep=3, ymin=20, ymax=40, ystep=5, xlab='', ylab=''):
-    """折れ線グラフ。pts は (横, 縦) の組。目盛りの数字だけで、点の値は書かない。"""
+def fig_linegraph(c, x, top, w, h, pts=(), xmax=24, xstep=3, ymin=20, ymax=40, ystep=5, xlab='', ylab='', lines=None):
+    """折れ線グラフ。pts は (横, 縦) の組。目盛りの数字だけで、点の値は書かない。
+    lines=[(記号, 点のリスト), ...] を渡すと、線の種類をかえて何本も描き、右上に凡例を書く。"""
     gx0, gx1 = x + 120, x + 390
     gy0, gy1 = top - h + 30, top - 24
 
@@ -575,12 +591,22 @@ def fig_linegraph(c, x, top, w, h, pts=(), xmax=24, xstep=3, ymin=20, ymax=40, y
     c.line(gx0, gy0, gx0, gy1)
     text(c, gx0 - 30, gy1 + 13, ylab, 8.5)
     text(c, (gx0 + gx1) / 2, gy0 - 24, xlab, 8.5, center=True)
-    setline(c, 1.8, ACCENT)
-    for (t1, v1), (t2, v2) in zip(pts, pts[1:]):
-        c.line(X(t1), Y(v1), X(t2), Y(v2))
-    c.setFillColor(ACCENT)
-    for t, v in pts:
-        c.circle(X(t), Y(v), 2.4, stroke=0, fill=1)
+    styles = [(ACCENT, 1.8, None), (INK, 1.4, (4, 2.5)), (MUTED, 1.7, (1, 2.5))]
+    for k, (lab, line) in enumerate(lines or [('', list(pts))]):
+        col, lw, dash = styles[k % 3]
+        setline(c, lw, col, dash)
+        for (t1, v1), (t2, v2) in zip(line, line[1:]):
+            c.line(X(t1), Y(v1), X(t2), Y(v2))
+        c.setDash()
+        c.setFillColor(col)
+        for t, v in line:
+            c.circle(X(t), Y(v), 2.2, stroke=0, fill=1)
+        if lines:
+            ly = gy1 - 9 - k * 13
+            setline(c, lw, col, dash)
+            c.line(gx1 - 62, ly + 3, gx1 - 40, ly + 3)
+            c.setDash()
+            text(c, gx1 - 34, ly, lab, 9.5, bold=True)
 
 
 def fig_flower(c, x, top, w, h):
@@ -739,11 +765,190 @@ def fig_world(c, x, top, w, h, marks=(), japan_label=True):
         text(c, px, py - 3.5, lab, 9.5, bold=True, color=ACCENT, center=True)
 
 
+def fig_cloudmaps(c, x, top, w, h, blobs=(), labels='アイウエ'):
+    """日本付近の雲の画像（気象衛星の画像のかわりの略図）。blobs は (経度, 緯度, 横の半径度, 縦の半径度)。"""
+    from world_outline import RINGS
+    n = len(blobs)
+    gap = 8
+    lon0, lon1, lat0, lat1 = 118, 152, 27, 47
+    slot = (w - gap * (n - 1)) / n
+    sx = sy = min(slot / (lon1 - lon0), (h - 18) / (lat1 - lat0))
+    fw, fh = (lon1 - lon0) * sx, (lat1 - lat0) * sy
+    for k, (lon, lat, rx, ry) in enumerate(blobs):
+        fx0, fy0 = x + k * (slot + gap) + (slot - fw) / 2, top - 16 - fh
+
+        def X(l): return fx0 + (l - lon0) * sx
+        def Y(a): return fy0 + (a - lat0) * sy
+        c.saveState()
+        clip = c.beginPath()
+        clip.rect(fx0, fy0, fw, fh)
+        c.clipPath(clip, stroke=0, fill=0)
+        c.setFillColor(colors.HexColor('#6F7E8B'))
+        c.rect(fx0, fy0, fw, fh, stroke=0, fill=1)
+        for name, pts in RINGS:
+            pp = c.beginPath()
+            pp.moveTo(X(pts[0][0] / 10), Y(pts[0][1] / 10))
+            for lon10, lat10 in pts[1:]:
+                pp.lineTo(X(lon10 / 10), Y(lat10 / 10))
+            pp.close()
+            c.setFillColor(colors.HexColor('#B6BEB0'))
+            c.drawPath(pp, stroke=0, fill=1)
+        c.setFillAlpha(.93)
+        c.setFillColor(colors.white)
+        for dx, dy, f in ((0, 0, 1), (-rx * .55, ry * .25, .7), (rx * .6, -ry * .2, .75), (rx * .1, ry * .55, .6)):
+            c.ellipse(X(lon + dx - rx * f), Y(lat + dy - ry * f), X(lon + dx + rx * f), Y(lat + dy + ry * f), stroke=0, fill=1)
+        c.setFillAlpha(1)
+        c.restoreState()
+        setline(c, .9)
+        c.rect(fx0, fy0, fw, fh, stroke=1, fill=0)
+        text(c, fx0 + fw / 2, top - 11, labels[k], 11, bold=True, center=True)
+
+
+def fig_seed(c, x, top, w, h):
+    """インゲンマメの種子を、半分に開いたようす。ア種皮・イ子葉・ウはい。"""
+    cx, cy = x + w / 2, top - h / 2 - 2
+    a, b = 74, 36
+    setline(c, 1.4)
+    c.setFillColor(SHADE)
+    c.ellipse(cx - a, cy - b, cx + a, cy + b, stroke=1, fill=1)          # 種皮
+    c.setFillColor(PALE)
+    setline(c, .9)
+    c.ellipse(cx - a + 5, cy - b + 5, cx + a - 5, cy + b - 5, stroke=1, fill=1)   # 子葉
+    setline(c, .7, MUTED, (3, 2))
+    c.line(cx - a + 8, cy, cx + a - 8, cy)
+    c.setDash()
+    c.setFillColor(INK)
+    c.ellipse(cx - a + 12, cy + 7, cx - a + 34, cy + 15, stroke=0, fill=1)     # はい
+    setline(c, .6, MUTED)
+
+    def mark(lab, lx, ly, tx, ty):
+        c.line(lx, ly + 3.5, tx, ty)
+        text(c, lx, ly, lab, 10.5, bold=True, color=ACCENT, center=True)
+
+    mark('ア', cx + a + 24, cy + 14, cx + a - 2, cy + 8)
+    mark('イ', cx + 28, cy - b - 18, cx + 22, cy - 18)
+    mark('ウ', cx - a - 8, cy + 30, cx - a + 14, cy + 12)
+
+
+def fig_sao(c, x, top, w, h, plate=5, pos=20, weight='60g', maxpos=50):
+    """さおばかり。支点からさらまでplate(cm)、おもりは支点から右へpos(cm)のところにつるす。"""
+    sc = 6.0
+    xf = x + 52 + plate * sc
+    yr = top - 56
+    xl, xr = xf - plate * sc - 6, xf + maxpos * sc + 8
+    setline(c, 1)
+    c.setFillColor(PALE)
+    c.rect(xl, yr - 3.5, xr - xl, 7, stroke=1, fill=1)
+    for k in range(0, maxpos + 1, 5):
+        setline(c, .7, INK)
+        c.line(xf + k * sc, yr + 3.5, xf + k * sc, yr + (8 if k % 10 == 0 else 6))
+        if k % 10 == 0:
+            text(c, xf + k * sc, yr + 11, str(k), 8, color=MUTED, center=True)
+    text(c, xr - 10, yr + 23, '(cm)', 8, color=MUTED)
+    # 支点
+    setline(c, 1)
+    c.line(xf, yr + 3.5, xf, yr + 28)
+    c.circle(xf, yr + 31, 3, stroke=1, fill=0)
+    text(c, xf + 7, yr + 26, '支点', 8.5, color=MUTED)
+    # さら
+    px = xl + 3
+    setline(c, .9)
+    c.line(px, yr - 3.5, px - 14, yr - 38)
+    c.line(px, yr - 3.5, px + 14, yr - 38)
+    c.setFillColor(colors.white)
+    c.rect(px - 20, yr - 42, 40, 4, stroke=1, fill=1)
+    text(c, px - 26 - tw('さら', 8.5), yr - 42, 'さら', 8.5, color=MUTED)
+    setline(c, .6, MUTED)
+    c.line(xf, yr - 12, px, yr - 12)
+    arrow(c, (xf + px) / 2, yr - 12, px + 1, yr - 12, 4, .6, MUTED)
+    arrow(c, (xf + px) / 2, yr - 12, xf - 1, yr - 12, 4, .6, MUTED)
+    text(c, (xf + px) / 2, yr - 24, f'{plate}cm', 8.5, color=MUTED, center=True)
+    # おもり
+    wx = xf + pos * sc
+    setline(c, .9)
+    c.line(wx, yr - 3.5, wx, yr - 24)
+    c.setFillColor(SHADE)
+    c.rect(wx - 12, yr - 44, 24, 20, stroke=1, fill=1)
+    text(c, wx, yr - 38, weight, 9, bold=True, color=colors.white, center=True)
+
+
+def fig_stem(c, x, top, w, h):
+    """茎の横断面。Aは管が輪のようにならぶ。Bは管が全体に散らばる。"""
+    r, cy = 40, top - h / 2 - 4
+    scatter = [(-18, 14), (6, 20), (22, 8), (-4, 2), (14, -12), (-22, -8), (-8, -22), (26, -22), (0, 24), (-26, 22),
+               (28, 24), (-14, -2), (8, -28), (20, 28), (-30, 0), (30, 0), (-2, -12), (16, 6)]
+    for cx, lab, kind in ((x + w / 2 - 90, 'A', 'ring'), (x + w / 2 + 90, 'B', 'scatter')):
+        setline(c, 1.1)
+        c.setFillColor(PALE)
+        c.circle(cx, cy, r, stroke=1, fill=1)
+        c.setFillColor(SHADE)
+        setline(c, .8)
+        if kind == 'ring':
+            for k in range(10):
+                t = math.radians(k * 36)
+                c.circle(cx + 26 * math.cos(t), cy + 26 * math.sin(t), 3.6, stroke=1, fill=1)
+        else:
+            for dx, dy in scatter:
+                c.circle(cx + dx * .95, cy + dy * .95, 3.2, stroke=1, fill=1)
+        text(c, cx, cy - r - 13, lab, 11, bold=True, center=True)
+    text(c, x + w / 2, cy - 4, '●が管のあと', 8.5, color=MUTED, center=True)
+
+
+def fig_circuitset(c, x, top, w, h, specs=(), labels='アイウエオカ'):
+    """豆電球とかん電池の回路を、ならべて描く。specs は (電池, 豆電球)。
+    電池 = 'one' / 'series'（2個を直列）/ 'parallel'（2個を並列）、豆電球 = 'one' / 'series' / 'parallel' / 'none'（導線だけ）。"""
+    n = len(specs)
+    pw = w / n
+    yb, yt = top - h + 14, top - 28
+    for k, (cell, bulb) in enumerate(specs):
+        px = x + k * pw
+        x0, x1 = px + 16, px + pw - 16
+        mid = (x0 + x1) / 2
+        text(c, mid, top - 12, labels[k], 11, bold=True, center=True)
+        setline(c, 1)
+        ybots = [yb] if cell != 'parallel' else [yb, yb + 18]
+        ytops = [yt] if bulb != 'parallel' else [yt, yt - 18]
+        c.line(x0, min(ybots), x0, max(ytops))
+        c.line(x1, min(ybots), x1, max(ytops))
+        for yy in ybots:
+            setline(c, 1)
+            if cell == 'series':
+                bx = mid - 12
+                c.line(x0, yy, bx, yy)
+                _battery_h(c, bx, yy, 2)
+                setline(c, 1)
+                c.line(bx + 19, yy, x1, yy)
+            else:
+                bx = mid - 2.5
+                c.line(x0, yy, bx, yy)
+                _battery_h(c, bx, yy, 1)
+                setline(c, 1)
+                c.line(bx + 5, yy, x1, yy)
+        setline(c, 1)
+        for yy in ytops:
+            c.line(x0, yy, x1, yy)
+            if bulb == 'series':
+                for bxx in (x0 + (x1 - x0) * .3, x0 + (x1 - x0) * .7):
+                    _bulb(c, bxx, yy, 6.5)
+            elif bulb != 'none':
+                _bulb(c, mid, yy, 6.5)
+        if cell == 'parallel':
+            for xx in (x0, x1):
+                _dot(c, xx, yb)
+                _dot(c, xx, yb + 18)
+        if bulb == 'parallel':
+            for xx in (x0, x1):
+                _dot(c, xx, yt)
+                _dot(c, xx, yt - 18)
+    text(c, x + w / 2, top - h - 5, '記号：長い線と短い線の組がかん電池（長い線が＋極）、丸に×が豆電球。', 8.5, color=MUTED, center=True)
+
+
 FIGS = {'monochord': fig_monochord, 'circuits': fig_circuits, 'moon': fig_moon,
         'ice_graph': fig_ice_graph, 'pendulum': fig_pendulum,
         'strata': fig_strata, 'magnet': fig_magnet, 'lever': fig_lever, 'sanken': fig_sanken,
         'linegraph': fig_linegraph, 'flower': fig_flower, 'syringe': fig_syringe, 'typhoon': fig_typhoon,
-        'world': fig_world}
+        'world': fig_world, 'cloudmaps': fig_cloudmaps, 'seed': fig_seed, 'sao': fig_sao, 'stem': fig_stem,
+        'circuitset': fig_circuitset}
 
 
 # ---------- 表・本文ブロック ----------
