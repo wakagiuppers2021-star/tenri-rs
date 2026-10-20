@@ -16,6 +16,7 @@ import tenri_rs_rika1 as R1
 import tenri_rs_rika2 as R2
 import tenri_rs_rika3 as R3
 import tenri_rs_rika4 as R4
+import tenri_rs_rika5 as R5
 import tenri_rs_shakai1 as S1
 import tenri_rs_shakai2 as S2
 import tenri_rs_shakai3 as S3
@@ -486,6 +487,119 @@ eq('理4-10(5) とけ残り', ans(R4, 10, 5), f'{num(0.5 - cap10)}g')
 eq('理4-10(6) 最大', ans(R4, 10, 6), f'{num(cap10)}g')
 dissolves = {'鉄': True, '銅': False, 'マグネシウム': True, '亜鉛': True}
 eq('理4-10(8) 塩酸にとけない', ans(R4, 10, 8), [k for k, v in choices(q_text(R4, 10, 8)).items() if not dissolves[v]][0])
+
+# ---------------- 理科・大問5 ----------------
+# 1 ゴムの車：走る距離はのばした長さに比例する
+rows = R5.SETS[0]['table']['rows']
+ln51 = [float(v) for v in rows[0][1:]]
+d1 = [float(v) for v in rows[1][1:]]
+d2 = [float(v) for v in rows[2][1:]]
+k1, k2 = d1[0] / ln51[0], d2[0] / ln51[0]
+assert all(abs(d - k1 * l) < 1e-9 for d, l in zip(d1, ln51)) and all(abs(d - k2 * l) < 1e-9 for d, l in zip(d2, ln51))
+eq('理5-1(1) 15cm', ans(R5, 1, 1), f'{num(d1[ln51.index(15)])}m')
+eq('理5-1(2) 25cm', ans(R5, 1, 2), f'{k1 * 25:.1f}m')
+eq('理5-1(3) ゴム2本', ans(R5, 1, 3), f'{k2 * 25:.1f}m')
+eq('理5-1(4) 関係', ans(R5, 1, 4), '比例')
+use51 = {'ヨット': '風', '模型飛行機': 'ゴム', 'こいのぼり': '風', 'おもちゃ': 'ゴム'}
+lab51 = dict(zip('アイウエ', ['ヨット', '模型飛行機', 'こいのぼり', 'おもちゃ']))
+eq('理5-1(5) 風とゴム', ans(R5, 1, 5), [join(k for k, v in lab51.items() if use51[v] == e) for e in ('風', 'ゴム')])
+source = {'風力': '風', '水力': '流れ落ちる水', '火力': '石油や天然ガスを燃やした熱', '太陽光': '太陽の光'}
+o51 = choices(q_text(R5, 1, 7))
+eq('理5-1(7) 発電', ans(R5, 1, 7), [[k for k, v in o51.items() if v == source[n]][0] for n in R5.SETS[0]['qs'][6]['labels']])
+
+# 2 電流計：5Aの端子の読みを、500mA（×100）、50mA（×10）に直す。クリップの数は電流に比例
+fa2 = R5.SETS[1]['fig']['args']
+eq('理5-2(1) 5A端子', ans(R5, 2, 1), f'{fa2["value"]}A')
+eq('理5-2(2) 500mA端子', ans(R5, 2, 2), f'{num(fa2["value"] * 100)}mA')
+eq('理5-2(3) 50mA端子', ans(R5, 2, 3), f'{num(fa2["value"] * 10)}mA')
+rows = R5.SETS[1]['table']['rows']
+amp = [float(v) for v in rows[0][1:]]
+clip = [float(v) for v in rows[1][1:]]
+kc = clip[0] / amp[0]
+assert all(abs(cl - kc * a_) < 1e-9 for cl, a_ in zip(clip, amp))
+eq('理5-2(5) 2.0A', ans(R5, 2, 5), f'{num(kc * 2.0)}個')
+eq('理5-2(6) 6個', ans(R5, 2, 6), f'{6 / kc:g}A')
+em = {'電磁石クレーン': True, '方位磁針': False, 'モーター': True, '豆電球': False, 'スピーカー': True}
+eq('理5-2(8) 電磁石を利用', ans(R5, 2, 8), join(k for k, v in choices(q_text(R5, 2, 8)).items() if em[v]))
+
+# 3 血液の循環：矢印の向きから血管の名前、酸素の多い血液を決める
+edges = {'ア': ('心臓', '肺'), 'イ': ('肺', '心臓'), 'ウ': ('心臓', '全身'), 'エ': ('全身', '心臓')}
+def vessel(src, dst):
+    return ('肺' if '肺' in (src, dst) else '大') + ('動脈' if src == '心臓' else '静脈')
+eq('理5-3(1) 血管の名前', ans(R5, 3, 1), [vessel(*edges[k]) for k in 'アイウエ'])
+flow = {('肺', '心臓'): True, ('心臓', '全身'): True, ('全身', '心臓'): False, ('心臓', '肺'): False}   # 酸素が多いか
+eq('理5-3(2) 酸素が多い', ans(R5, 3, 2), join(k for k in 'アイウエ' if flow[edges[k]]))
+eq('理5-3(4) 1分間', ans(R5, 3, 4), f'{64 * 75 / 1000:.1f}L')
+eq('理5-3(5) 1時間', ans(R5, 3, 5), f'{num(64 * 75 / 1000 * 60)}L')
+eq('理5-3(6) 体重', ans(R5, 3, 6), f'{num(4.8 / 0.08)}kg')
+
+# 4 かんの燃え方：空気の出入り（上にふた・底に穴）
+cs = R5.SETS[3]['fig']['args']['specs']
+score = {(False, True): 3, (False, False): 2, (True, True): 1, (True, False): 0}      # 新しい空気の入りやすさ
+s54 = {k: score[sp] for k, sp in zip('アイウエ', cs)}
+eq('理5-4(1) よく燃える・消える', ans(R5, 4, 1), [max(s54, key=s54.get), min(s54, key=s54.get)])
+eq('理5-4(5) 使われた酸素', ans(R5, 4, 5), f'{25 * (21 - 16) / 100:.2f}L')
+burn = {'ろうそく': True, '木': True, 'スチールウール': False, 'アルコール': True}          # 二酸化炭素が出るか
+eq('理5-4(8) 二酸化炭素が出ない', ans(R5, 4, 8), [k for k, v in choices(q_text(R5, 4, 8)).items() if not burn[v]][0])
+
+# 5 鏡：入射角＝反射角。鏡1枚ごとに同じだけ温度が上がる
+eq('理5-5(2) 反射角', ans(R5, 5, 2), f'{R5.SETS[4]["fig"]["args"]["angle"]}度')
+rows = R5.SETS[4]['table']['rows']
+mir = [int(v) for v in rows[0][1:]]
+tmp = [int(v) for v in rows[1][1:]]
+step = (tmp[-1] - tmp[0]) // (mir[-1] - mir[0])
+assert all(tmp[i] == tmp[0] + step * mir[i] for i in range(len(mir)))
+eq('理5-5(3) 5枚', ans(R5, 5, 3), f'{tmp[0] + step * 5}℃')
+eq('理5-5(4) 53℃', ans(R5, 5, 4), f'{(53 - tmp[0]) // step}枚')
+eq('理5-5(5) 1枚あたり', ans(R5, 5, 5), f'{step}℃')
+
+# 6 消化：図の記号と食べ物の通る順
+org6 = {'ア': '口', 'イ': '肝臓', 'ウ': '食道', 'エ': '胃', 'オ': '小腸', 'カ': '大腸'}
+eq('理5-6(1) 図の名前', ans(R5, 6, 1), [org6[k] for k in 'アイウエオカ'])
+tube = ['口', '食道', '胃', '小腸', '大腸']
+eq('理5-6(2) 通る順', ans(R5, 6, 2), '→'.join([k for k, v in org6.items() if v == n][0] for n in tube))
+eq('理5-6(4) 養分を吸収', ans(R5, 6, 4), [k for k, v in org6.items() if v == '小腸'][0])
+eq('理5-6(6) 水分を吸収', ans(R5, 6, 6), [k for k, v in org6.items() if v == '大腸'][0])
+eq('理5-6(7) 肝臓', ans(R5, 6, 7), [k for k, v in org6.items() if v == '肝臓'][0])
+eq('理5-6(8) 小腸の割合', ans(R5, 6, 8), f'約{round(6 / 9 * 100)}%')
+
+# 7 水：地球の水、水質の指標生物、水の量
+eq('理5-7(2) 海水の割合', ans(R5, 7, 2), [k for k, v in choices(q_text(R5, 7, 2)).items() if '97' in v][0])
+clean = {'サワガニ': True, 'カワゲラ': True, 'サカマキガイ': False, 'ヒラタカゲロウ': True}
+eq('理5-7(4) きれいな水の生物', ans(R5, 7, 4), join(k for k, v in choices(q_text(R5, 7, 4)).items() if clean[v]))
+eq('理5-7(6) 1週間の水', ans(R5, 7, 6), f'{200 * 4 * 7}L')
+
+# 8 滑車と輪じく：荷物を支えるひもの数だけ、力が小さくなり、引く長さが長くなる
+hold = {'ア': 1, 'イ': 2, 'ウ': 2}
+eq('理5-8(1) 定滑車', ans(R5, 8, 1), f'{60 // hold["ア"]}kg')
+eq('理5-8(2) 動滑車', ans(R5, 8, 2), f'{60 // hold["イ"]}kg')
+eq('理5-8(3) 引く長さ', ans(R5, 8, 3), f'{1 * hold["イ"]}m')
+eq('理5-8(4) 組み合わせ', ans(R5, 8, 4), f'{60 // hold["ウ"]}kg')
+eq('理5-8(6) 輪じく', ans(R5, 8, 6), f'{num(80 * 5 / 20)}g')
+eq('理5-8(7) 輪じく', ans(R5, 8, 7), f'{num(30 * 20 / 5)}g')
+wheel = {'ドアノブ': True, 'ピンセット': False, '水道のじゃ口のハンドル': True, 'はさみ': False}
+eq('理5-8(8) 輪じくを利用', ans(R5, 8, 8), join(k for k, v in choices(q_text(R5, 8, 8)).items() if wheel[v]))
+
+# 9 こん虫：あしが6本のものがこん虫
+rows = R5.SETS[8]['table']['rows']
+legs = {lab: int(v[:-1]) for lab, v in zip(rows[0][1:], rows[2][1:])}
+name9 = dict(zip(rows[0][1:], rows[1][1:]))
+eq('理5-9(1) こん虫', ans(R5, 9, 1), join(k for k, v in legs.items() if v == 6))
+complete = {'モンシロチョウ': True, 'トンボ': False, 'バッタ': False}
+eq('理5-9(3) さなぎ', ans(R5, 9, 3), join(k for k, v in name9.items() if complete.get(v)))
+leg_of = {name9[k]: v for k, v in legs.items()}
+eq('理5-9(4) あしの数', ans(R5, 9, 4), f'{2 * leg_of["モンシロチョウ"] + leg_of["クモ"] + 3 * leg_of["ダンゴムシ"]}本')
+
+# 10 かげ：図の向き（北を90度として反時計回りに測る）
+ang10 = {'ア': 150, 'イ': 90, 'ウ': 30}
+eq('理5-10(1) 正午のかげ', ans(R5, 10, 1), [k for k, v in ang10.items() if v == 90][0])
+eq('理5-10(2) 午前9時のかげ', ans(R5, 10, 2), [k for k, v in ang10.items() if v > 90][0])
+seq = [ang10[k] for k in 'アイウ']                                             # 午前9時→正午→午後3時
+eq('理5-10(3) かげの回る向き', ans(R5, 10, 3), '時計回り' if seq == sorted(seq, reverse=True) else '反時計回り')
+eq('理5-10(5) 太陽の動き', ans(R5, 10, 5), f'{(14 - 10) * 15}度')
+eq('理5-10(6) 星座の動き', ans(R5, 10, 6), f'{30 * 3}度')
+west = (30 * 3)                                                                # 真南から西へ90度ずれた方角
+eq('理5-10(7) 3か月後の方角', ans(R5, 10, 7), {0: '南の空', 90: '西の空'}[west])
 
 # ---------------- 社会・大問1 ----------------
 capital = {'青森県': '青森市', '静岡県': '静岡市', '京都府': '京都市', '香川県': '高松市', '新潟県': '新潟市',

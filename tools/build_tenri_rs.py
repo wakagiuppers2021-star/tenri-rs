@@ -78,8 +78,11 @@ def wrap(s, width, size=10, bold=False):
         for ch in part:
             if line and tw(line + ch, size, bold) > width:
                 if ch in '、。）」』】・,.' and len(line) > 1:
-                    out.append(line[:-1])
-                    line = line[-1] + ch
+                    k = len(line) - 1
+                    while k > 1 and _word(line[k]) and _word(line[k - 1]):
+                        k -= 1                                   # 数字や英字のかたまりは、まるごと次の行へ
+                    out.append(line[:k])
+                    line = line[k:] + ch
                 elif _word(ch) and _word(line[-1]):
                     k = len(line)
                     while k > 0 and _word(line[k - 1]):
@@ -943,12 +946,305 @@ def fig_circuitset(c, x, top, w, h, specs=(), labels='アイウエオカ'):
     text(c, x + w / 2, top - h - 5, '記号：長い線と短い線の組がかん電池（長い線が＋極）、丸に×が豆電球。', 8.5, color=MUTED, center=True)
 
 
+def fig_ammeter(c, x, top, w, h, value=3.2, vmax=5):
+    """電流計の目盛り板と針（0〜vmax）。値は図の針の位置だけで示す。"""
+    R = min(w / 2 - 16, 84)
+    cx, cy = x + w / 2, top - R - 12
+    a0, a1 = 150, 30                                  # 目盛りの左端と右端の角度
+    setline(c, 1)
+    c.arc(cx - R, cy - R, cx + R, cy + R, a1, a0 - a1)
+    n = int(round(vmax * 10))
+    for k in range(n + 1):
+        ang = math.radians(a0 - (a0 - a1) * k / n)
+        ln = 10 if k % 10 == 0 else 7 if k % 5 == 0 else 4
+        setline(c, .9 if k % 5 == 0 else .5)
+        c.line(cx + R * math.cos(ang), cy + R * math.sin(ang), cx + (R - ln) * math.cos(ang), cy + (R - ln) * math.sin(ang))
+        if k % 10 == 0:
+            text(c, cx + (R + 9) * math.cos(ang), cy + (R + 9) * math.sin(ang) - 3.5, str(k // 10), 9, center=True)
+    ang = math.radians(a0 - (a0 - a1) * value / vmax)
+    setline(c, 1.4, ACCENT)
+    c.line(cx, cy, cx + (R - 6) * math.cos(ang), cy + (R - 6) * math.sin(ang))
+    c.setFillColor(INK)
+    c.circle(cx, cy, 3.4, stroke=0, fill=1)
+    text(c, cx, cy - 22, 'A', 12, bold=True, center=True)
+
+
+def fig_circulation(c, x, top, w, h):
+    """血液の流れ。肺・心臓・全身の間を、ア〜エの血管がつなぐ。"""
+    cx, cy = x + w / 2, top - h / 2 - 2
+    bw, bh, gap = 76, 40, 92
+    boxes = {'肺': cx - bw - gap, '心臓': cx - bw / 2, '全身': cx + gap}
+    for name, bx in boxes.items():
+        setline(c, 1)
+        c.setFillColor(PALE)
+        c.rect(bx, cy - bh / 2, bw, bh, stroke=1, fill=1)
+        text(c, bx + bw / 2, cy - 4.5, name if name != '全身' else '全身', 12, bold=True, center=True)
+
+    def edge(lab, xs, xe, y):
+        arrow(c, xs, y, xe, y, 7, 1.1, INK)
+        mx = (xs + xe) / 2
+        c.setFillColor(colors.white)
+        setline(c, .7, ACCENT)
+        c.circle(mx, y + (11 if y > cy else -11), 7.4, stroke=1, fill=1)
+        text(c, mx, y + (11 if y > cy else -11) - 3.6, lab, 10, bold=True, color=ACCENT, center=True)
+
+    l0, l1 = boxes['肺'] + bw, boxes['心臓']
+    r0, r1 = boxes['心臓'] + bw, boxes['全身']
+    edge('ア', l1 - 2, l0 + 2, cy + 10)           # 心臓→肺
+    edge('イ', l0 + 2, l1 - 2, cy - 10)           # 肺→心臓
+    edge('ウ', r0 + 2, r1 - 2, cy + 10)           # 心臓→全身
+    edge('エ', r1 - 2, r0 + 2, cy - 10)           # 全身→心臓
+
+
+def fig_cans(c, x, top, w, h, specs=(), labels='アイウエ'):
+    """空きかんの中で木の棒を燃やす。specs は (上にふたがあるか, 底に穴があるか)。"""
+    n = len(specs)
+    pw = w / n
+    cw, ch = 44, 58
+    yb = top - h + 16
+    for k, (lid, hole) in enumerate(specs):
+        cx = x + k * pw + pw / 2
+        text(c, cx, top - 11, labels[k], 11, bold=True, center=True)
+        setline(c, 1.3)
+        c.line(cx - cw / 2, yb + ch, cx - cw / 2, yb)
+        c.line(cx + cw / 2, yb + ch, cx + cw / 2, yb)
+        if hole:
+            c.line(cx - cw / 2, yb, cx - 5, yb)
+            c.line(cx + 5, yb, cx + cw / 2, yb)
+        else:
+            c.line(cx - cw / 2, yb, cx + cw / 2, yb)
+        if lid:
+            c.setFillColor(INK)
+            c.rect(cx - cw / 2 - 2, yb + ch, cw + 4, 3.5, stroke=0, fill=1)
+        setline(c, 2.2, MUTED)
+        c.line(cx, yb + 3, cx, yb + 34)                                   # 木の棒
+        c.setFillColor(colors.HexColor('#C9822B'))
+        c.drawPath(_poly(c, [(cx - 4.5, yb + 34), (cx + 4.5, yb + 34), (cx, yb + 48)]), stroke=0, fill=1)   # 炎
+    text(c, x + w / 2, top - h + 3, '黒い線はふた。底の切れ目は穴。', 8.5, color=MUTED, center=True)
+
+
+def fig_mirror(c, x, top, w, h, angle=30):
+    """鏡に当たる光と、はね返る光。入射角にだけ角度を書く。"""
+    cx, my = x + w / 2, top - h + 26
+    L = 66
+    setline(c, 1.6)
+    c.line(cx - 62, my, cx + 62, my)
+    setline(c, .5)
+    for k in range(-60, 62, 7):
+        c.line(cx + k, my, cx + k - 5, my - 6)
+    setline(c, .7, MUTED, (3, 2))
+    c.line(cx, my, cx, my + L + 10)
+    c.setDash()
+    t = math.radians(angle)
+    arrow(c, cx - L * math.sin(t), my + L * math.cos(t), cx - 4 * math.sin(t), my + 4 * math.cos(t), 7, 1.2, INK)
+    arrow(c, cx, my, cx + L * math.sin(t), my + L * math.cos(t), 7, 1.2, INK)
+    setline(c, .8, ACCENT)
+    c.arc(cx - 26, my - 26, cx + 26, my + 26, 90, angle)
+    text(c, cx - 30 - tw(f'{angle}°', 9) + 8, my + 28, f'{angle}°', 9, bold=True, color=ACCENT)
+    c.setFillColor(colors.white)
+    setline(c, .7, ACCENT)
+    c.circle(cx + 33, my + 33, 8, stroke=1, fill=1)
+    text(c, cx + 33, my + 33 - 3.6, '?', 10, bold=True, color=ACCENT, center=True)
+    text(c, cx - L * math.sin(t) - 6, my + L * math.cos(t) + 4, '日光', 8.5, color=MUTED, center=True)
+
+
+def fig_digest(c, x, top, w, h):
+    """食べ物の通り道の略図。ア口・イ肝臓・ウ食道・エ胃・オ小腸・カ大腸。"""
+    cx = x + w / 2
+    y0 = top - 6
+    setline(c, 1)
+    c.setFillColor(PALE)
+    c.ellipse(cx - 15, y0 - 20, cx + 15, y0 - 4, stroke=1, fill=1)             # 口
+    setline(c, 1.8)
+    c.line(cx, y0 - 20, cx, y0 - 52)                                             # 食道
+    setline(c, 1)
+    c.setFillColor(PALE)
+    c.ellipse(cx + 2, y0 - 82, cx + 44, y0 - 50, stroke=1, fill=1)               # 胃
+    c.setFillColor(SHADE)
+    c.ellipse(cx - 62, y0 - 76, cx - 4, y0 - 52, stroke=1, fill=1)               # 肝臓
+    # 大腸（小腸を囲む）
+    setline(c, 5, LINE)
+    c.line(cx - 40, y0 - 128, cx - 40, y0 - 86)
+    c.line(cx - 40, y0 - 86, cx + 40, y0 - 86)
+    c.line(cx + 40, y0 - 86, cx + 40, y0 - 128)
+    setline(c, 1.2, MUTED)
+    c.line(cx - 43.5, y0 - 128, cx - 43.5, y0 - 83)
+    c.line(cx - 43.5, y0 - 83, cx + 43.5, y0 - 83)
+    c.line(cx + 43.5, y0 - 83, cx + 43.5, y0 - 128)
+    setline(c, 5, LINE)
+    c.line(cx + 40, y0 - 128, cx + 12, y0 - 138)
+    c.line(cx + 12, y0 - 138, cx + 12, y0 - 150)
+    setline(c, 1.2, MUTED)
+    c.line(cx + 43.5, y0 - 128, cx + 15, y0 - 140)
+    c.line(cx + 8.5, y0 - 138, cx + 8.5, y0 - 150)
+    # 小腸
+    setline(c, 1.4, INK)
+    pts = []
+    for k in range(7):
+        yy = y0 - 94 - k * 5.4
+        pts += [(cx - 28, yy), (cx + 28, yy)] if k % 2 == 0 else [(cx + 28, yy), (cx - 28, yy)]
+    for (xa, ya), (xb, yb) in zip(pts, pts[1:]):
+        c.line(xa, ya, xb, yb)
+    c.line(cx, y0 - 52, cx + 23, y0 - 82)
+
+    def mark(lab, lx, ly, tx, ty):
+        setline(c, .6, MUTED)
+        c.line(lx, ly + 3.5, tx, ty)
+        text(c, lx, ly, lab, 10.5, bold=True, color=ACCENT, center=True)
+
+    mark('ア', cx + 40, y0 - 14, cx + 15, y0 - 12)
+    mark('イ', cx - 84, y0 - 62, cx - 58, y0 - 64)
+    mark('ウ', cx + 20, y0 - 36, cx + 2, y0 - 36)
+    mark('エ', cx + 66, y0 - 70, cx + 44, y0 - 68)
+    mark('オ', cx + 70, y0 - 112, cx + 28, y0 - 108)
+    mark('カ', cx - 70, y0 - 112, cx - 42, y0 - 108)
+
+
+def fig_watercycle(c, x, top, w, h):
+    """水のじゅんかん。ア蒸発・イ雲・ウ雨・エ川・オ地下水。"""
+    cx = x + w / 2
+    yb = top - h + 8
+    # 海
+    sx0, sx1 = cx - 190, cx - 40
+    c.setFillColor(colors.HexColor('#C9D6DF'))
+    setline(c, .8)
+    c.rect(sx0, yb, sx1 - sx0, 30, stroke=1, fill=1)
+    setline(c, .6, MUTED)
+    for k in range(5):
+        c.line(sx0 + 14 + k * 28, yb + 20, sx0 + 26 + k * 28, yb + 20)
+    text(c, (sx0 + sx1) / 2, yb + 6, '海', 9, color=MUTED, center=True)
+    # 山と地面
+    c.setFillColor(PALE)
+    setline(c, 1)
+    c.drawPath(_poly(c, [(sx1, yb + 30), (cx + 18, yb + 30), (cx + 60, yb + 84), (cx + 100, yb + 30), (cx + 190, yb + 30), (cx + 190, yb), (sx1, yb)]), stroke=1, fill=1)
+    # 川
+    setline(c, 2.2, colors.HexColor('#7F96A8'))
+    c.line(cx + 50, yb + 70, cx + 30, yb + 44)
+    c.line(cx + 30, yb + 44, cx + 10, yb + 34)
+    c.line(cx + 10, yb + 34, sx1 + 2, yb + 28)
+    # 雲
+    c.setFillColor(colors.white)
+    setline(c, 1)
+    for dx, dy, r in ((-18, 0, 13), (0, 6, 16), (20, 0, 13), (4, -3, 15)):
+        c.circle(cx - 20 + dx, yb + 112 + dy, r, stroke=1, fill=1)
+    c.setFillColor(colors.white)
+    for dx, dy, r in ((-18, 0, 12.4), (0, 6, 15.4), (20, 0, 12.4), (4, -3, 14.4)):
+        c.circle(cx - 20 + dx, yb + 112 + dy, r, stroke=0, fill=1)
+    # 雨
+    setline(c, .9, MUTED)
+    for k in range(4):
+        c.line(cx - 6 + k * 12, yb + 98, cx - 12 + k * 12, yb + 80)
+    # 蒸発（海から雲へ）
+    for k in range(3):
+        xx = sx0 + 36 + k * 40
+        arrow(c, xx, yb + 32, xx + 4, yb + 74, 5, .8, MUTED)
+    # 地下水
+    arrow(c, cx + 60, yb + 14, cx + 4, yb + 14, 5, .9, MUTED)
+
+    def mark(lab, mx, my):
+        c.setFillColor(colors.white)
+        setline(c, .7, ACCENT)
+        c.circle(mx, my, 7.4, stroke=1, fill=1)
+        text(c, mx, my - 3.6, lab, 10, bold=True, color=ACCENT, center=True)
+
+    mark('ア', sx0 + 78, yb + 58)
+    mark('イ', cx - 20, yb + 112)
+    mark('ウ', cx + 40, yb + 90)
+    mark('エ', cx + 18, yb + 48)
+    mark('オ', cx + 32, yb + 14)
+
+
+def fig_pulleys(c, x, top, w, h):
+    """ひもと滑車。ア定滑車、イ動滑車、ウ動滑車と定滑車のくみ合わせ。荷物は60kg。"""
+    pw = w / 3
+    yc = top - 6                                    # 天井の下の線
+    ypul = yc - 24
+    ymov = top - 82
+    r = 9
+
+    def ceiling(cx):
+        setline(c, 1.6)
+        c.line(cx - 48, yc, cx + 48, yc)
+        setline(c, .5)
+        for k in range(-48, 48, 8):
+            c.line(cx + k, yc, cx + k + 5, yc + 6)
+
+    def pulley(px, py):
+        setline(c, 1)
+        c.setFillColor(PALE)
+        c.circle(px, py, r, stroke=1, fill=1)
+        c.setFillColor(INK)
+        c.circle(px, py, 1.6, stroke=0, fill=1)
+
+    def box(bx, by):
+        setline(c, 1)
+        c.setFillColor(SHADE)
+        c.rect(bx - 14, by - 18, 28, 18, stroke=1, fill=1)
+        text(c, bx, by - 13, '60kg', 8.5, bold=True, color=colors.white, center=True)
+
+    for k, lab in enumerate('アイウ'):
+        cx = x + k * pw + pw / 2
+        ceiling(cx)
+        text(c, cx, top - h + 4, lab, 11, bold=True, center=True)
+        setline(c, 1)
+        if lab == 'ア':
+            px = cx
+            c.line(px, yc, px, ypul + r + 3)
+            pulley(px, ypul)
+            c.line(px - r, ypul, px - r, ymov - 8)            # 荷物側
+            box(px - r, ymov - 8)
+            c.line(px + r, ypul, px + r, ymov + 14)           # 引く側
+            arrow(c, px + r, ymov + 14, px + r, ymov - 8, 7, 1.3, ACCENT)
+        elif lab == 'イ':
+            px = cx
+            c.line(px - r, yc, px - r, ymov)                  # 天井にとめたひも
+            pulley(px, ymov)
+            c.arc(px - r, ymov - r, px + r, ymov + r, 180, 180)
+            c.line(px + r, ymov, px + r, ypul + 6)
+            arrow(c, px + r, ypul + 6, px + r, ypul + 24, 7, 1.3, ACCENT)
+            c.line(px, ymov - r, px, ymov - r - 4)
+            box(px, ymov - r - 4)
+        else:
+            fx = cx + 12
+            mx = fx - 2 * r
+            c.line(mx - r, yc, mx - r, ymov)
+            pulley(mx, ymov)
+            c.arc(mx - r, ymov - r, mx + r, ymov + r, 180, 180)
+            c.line(mx + r, ymov, mx + r, ypul)
+            c.line(fx, yc, fx, ypul + r + 3)
+            pulley(fx, ypul)
+            c.line(fx + r, ypul, fx + r, ymov + 14)
+            arrow(c, fx + r, ymov + 14, fx + r, ymov - 8, 7, 1.3, ACCENT)
+            c.line(mx, ymov - r, mx, ymov - r - 4)
+            box(mx, ymov - r - 4)
+
+
+def fig_shadow(c, x, top, w, h):
+    """棒のかげを上から見た図。ア・イ・ウは午前9時・正午・午後3時のかげのどれか。"""
+    cx, cy = x + w / 2, top - h / 2 - 4
+    R = 54
+    setline(c, .7, LINE, (3, 2))
+    c.circle(cx, cy, R, stroke=1, fill=0)
+    c.setDash()
+    for lab, dx, dy in (('北', 0, R + 10), ('南', 0, -R - 17), ('東', R + 14, -3.5), ('西', -R - 14, -3.5)):
+        text(c, cx + dx, cy + dy, lab, 10, bold=True, color=MUTED, center=True)
+    for lab, ang, ln in (('ア', 150, 50), ('イ', 90, 26), ('ウ', 30, 50)):
+        t = math.radians(ang)
+        setline(c, 2, ACCENT)
+        c.line(cx, cy, cx + ln * math.cos(t), cy + ln * math.sin(t))
+        text(c, cx + (ln + 9) * math.cos(t), cy + (ln + 9) * math.sin(t) - 3.6, lab, 10.5, bold=True, color=ACCENT, center=True)
+    c.setFillColor(INK)
+    c.circle(cx, cy, 3.6, stroke=0, fill=1)
+    text(c, cx + 8, cy - 14, '棒', 8.5, color=MUTED)
+
+
 FIGS = {'monochord': fig_monochord, 'circuits': fig_circuits, 'moon': fig_moon,
         'ice_graph': fig_ice_graph, 'pendulum': fig_pendulum,
         'strata': fig_strata, 'magnet': fig_magnet, 'lever': fig_lever, 'sanken': fig_sanken,
         'linegraph': fig_linegraph, 'flower': fig_flower, 'syringe': fig_syringe, 'typhoon': fig_typhoon,
         'world': fig_world, 'cloudmaps': fig_cloudmaps, 'seed': fig_seed, 'sao': fig_sao, 'stem': fig_stem,
-        'circuitset': fig_circuitset}
+        'circuitset': fig_circuitset, 'ammeter': fig_ammeter, 'circulation': fig_circulation, 'cans': fig_cans,
+        'mirror': fig_mirror, 'digest': fig_digest, 'watercycle': fig_watercycle, 'pulleys': fig_pulleys, 'shadow': fig_shadow}
 
 
 # ---------- 表・本文ブロック ----------
