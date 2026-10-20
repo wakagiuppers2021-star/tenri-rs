@@ -690,10 +690,60 @@ def fig_typhoon(c, x, top, w, h):
         text(c, px, cy - 3.6, lab, 10, bold=True, center=True)
 
 
+def fig_world(c, x, top, w, h, marks=(), japan_label=True):
+    """世界の略地図（正距円筒図法）。marks は (記号, 経度, 緯度) または (記号, 経度, 緯度, 文字の右へ, 上へ)。"""
+    from world_outline import RINGS
+    lat_top, lat_bot = 84, -56
+    sc = min(w / 360, (h - 16) / (lat_top - lat_bot))
+    x0 = x + (w - 360 * sc) / 2
+    y0 = top - 4
+
+    def X(lon): return x0 + (lon + 180) * sc
+    def Y(lat): return y0 - (lat_top - lat) * sc
+    # 緯線・経線
+    for lat in range(-30, 91, 30):
+        if lat > lat_top:
+            continue
+        setline(c, .35, LINE, (2, 2) if lat else None)
+        c.line(X(-180), Y(lat), X(180), Y(lat))
+        lab = f'{abs(lat)}' + ('N' if lat > 0 else 'S' if lat < 0 else '')
+        text(c, X(-180) - 3 - tw(lab, 7), Y(lat) - 2.5, lab, 7, color=MUTED)
+    for lon in range(-180, 181, 60):
+        setline(c, .35, LINE, (2, 2))
+        c.line(X(lon), Y(lat_top), X(lon), Y(lat_bot))
+        lab = f'{abs(lon)}' + ('E' if 0 < lon < 180 else 'W' if -180 < lon < 0 else '')
+        text(c, X(lon), Y(lat_bot) - 10, lab, 7, color=MUTED, center=True)
+    c.setDash()
+    setline(c, .9, MUTED)
+    c.line(X(-180), Y(0), X(180), Y(0))
+    text(c, X(180) - 28, Y(0) + 2.5, '赤道', 7.5, color=MUTED)
+    # 陸地
+    for name, pts in RINGS:
+        p = c.beginPath()
+        p.moveTo(X(pts[0][0] / 10), Y(pts[0][1] / 10))
+        for lon10, lat10 in pts[1:]:
+            p.lineTo(X(lon10 / 10), Y(lat10 / 10))
+        p.close()
+        c.setFillColor(SHADE if name == 'Japan' else PALE)
+        setline(c, .3, SHADE)
+        c.drawPath(p, fill=1, stroke=1)
+    if japan_label:
+        text(c, X(140), Y(35) - 15, '日本', 8, bold=True, color=INK)
+    # 印
+    for m in marks:
+        lab, lon, lat = m[:3]
+        px, py = X(lon) + (m[3] if len(m) > 3 else 0), Y(lat) + (m[4] if len(m) > 4 else 0)
+        c.setFillColor(colors.white)
+        setline(c, .9, ACCENT)
+        c.circle(px, py, 6.4, stroke=1, fill=1)
+        text(c, px, py - 3.5, lab, 9.5, bold=True, color=ACCENT, center=True)
+
+
 FIGS = {'monochord': fig_monochord, 'circuits': fig_circuits, 'moon': fig_moon,
         'ice_graph': fig_ice_graph, 'pendulum': fig_pendulum,
         'strata': fig_strata, 'magnet': fig_magnet, 'lever': fig_lever, 'sanken': fig_sanken,
-        'linegraph': fig_linegraph, 'flower': fig_flower, 'syringe': fig_syringe, 'typhoon': fig_typhoon}
+        'linegraph': fig_linegraph, 'flower': fig_flower, 'syringe': fig_syringe, 'typhoon': fig_typhoon,
+        'world': fig_world}
 
 
 # ---------- 表・本文ブロック ----------
