@@ -310,8 +310,190 @@ def fig_pendulum(c, x, top, w, h):
     text(c, px + 22, py - L / 2 - 3, 'ふりこの長さ', 8.5, color=MUTED)
 
 
+def _poly(c, pts):
+    p = c.beginPath()
+    p.moveTo(*pts[0])
+    for pt in pts[1:]:
+        p.lineTo(*pt)
+    p.close()
+    return p
+
+
+def _pattern(c, kind, x0, y0, x1, y1):
+    """地層の模様。れき=丸、砂=点、どろ=短い横線、火山灰=小さなv。"""
+    if kind == 'gravel':
+        setline(c, .6)
+        c.setFillColor(PALE)
+        for r, yy in enumerate(range(int(y0) + 4, int(y1) + 6, 8)):
+            for xx in range(int(x0) + 4 + (r % 2) * 5, int(x1) + 6, 10):
+                c.circle(xx, yy, 2.7, stroke=1, fill=1)
+    elif kind == 'sand':
+        c.setFillColor(INK)
+        for r, yy in enumerate(range(int(y0) + 2, int(y1) + 4, 4)):
+            for xx in range(int(x0) + 2 + (r % 2) * 2, int(x1) + 4, 5):
+                c.circle(xx, yy, .55, stroke=0, fill=1)
+    elif kind == 'mud':
+        setline(c, .5, MUTED)
+        for r, yy in enumerate(range(int(y0) + 3, int(y1) + 4, 5)):
+            for xx in range(int(x0) + (r % 2) * 4, int(x1) + 6, 9):
+                c.line(xx, yy, xx + 5, yy)
+    elif kind == 'ash':
+        setline(c, .6)
+        for r, yy in enumerate(range(int(y0) + 3, int(y1) + 4, 6)):
+            for xx in range(int(x0) + 2 + (r % 2) * 4, int(x1) + 6, 8):
+                c.line(xx - 2, yy + 2, xx, yy - 1)
+                c.line(xx, yy - 1, xx + 2, yy + 2)
+
+
+def _layer(c, pts, kind):
+    c.saveState()
+    c.clipPath(_poly(c, pts), stroke=0, fill=0)
+    xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+    _pattern(c, kind, min(xs), min(ys), max(xs), max(ys))
+    c.restoreState()
+    setline(c, .8)
+    c.drawPath(_poly(c, pts), stroke=1, fill=0)
+
+
+def fig_strata(c, x, top, w, h):
+    """がけの地層。下からE〜Bが断層Xでずれていて、いちばん上のAはずれていない。"""
+    cx = x + w / 2 - 60
+    bx0, bx1 = cx - 140, cx + 140
+    yb = top - h + 20
+    layers = [('E', 26, 'gravel'), ('D', 26, 'sand'), ('C', 26, 'mud'), ('B', 14, 'ash')]
+    ys = [yb]
+    for _, t, _ in layers:
+        ys.append(ys[-1] + t)
+    T = ys[-1] + 26
+    d = 18                                   # 断層の右側が下がった大きさ
+    fx0, fx1 = cx + 24, cx - 6
+
+    def fx(y):
+        return fx0 + (fx1 - fx0) * (y - yb) / (ys[-1] - yb)
+
+    for i, (lab, _, kind) in enumerate(layers):
+        lo, hi = ys[i], ys[i + 1]
+        _layer(c, [(bx0, lo), (fx(lo), lo), (fx(hi), hi), (bx0, hi)], kind)
+        lo2, hi2 = max(lo - d, yb), hi - d
+        _layer(c, [(fx(lo2), lo2), (bx1, lo2), (bx1, hi2), (fx(hi2), hi2)], kind)
+        text(c, bx0 - 14, (lo + hi) / 2 - 3.5, lab, 10, bold=True)
+    top_b = ys[-1]
+    _layer(c, [(bx0, top_b), (fx(top_b), top_b), (fx(top_b - d), top_b - d), (bx1, top_b - d), (bx1, T), (bx0, T)], 'sand')
+    text(c, bx0 - 14, (top_b + T) / 2 - 3.5, 'A', 10, bold=True)
+    setline(c, 2.2, ACCENT)
+    c.line(fx(yb), yb, fx(top_b), top_b)
+    text(c, fx(yb), yb - 14, 'X', 10, bold=True, color=ACCENT, center=True)
+    # 凡例（Bの層は凡例に入れない）
+    lx = bx1 + 34
+    for k, (name, kind) in enumerate([('れき', 'gravel'), ('砂', 'sand'), ('どろ', 'mud')]):
+        yy = T - 12 - k * 24
+        _layer(c, [(lx, yy - 6), (lx + 26, yy - 6), (lx + 26, yy + 8), (lx, yy + 8)], kind)
+        text(c, lx + 33, yy - 2, name, 9)
+    _layer(c, [(lx, T - 84), (lx + 26, T - 84), (lx + 26, T - 70), (lx, T - 70)], 'ash')
+    text(c, lx + 33, T - 80, 'Bの層', 9)
+
+
+def _nail_v(c, x, ytop, length):
+    """頭が上、先が下の鉄くぎ。先の y を返す。"""
+    setline(c, .9)
+    c.setFillColor(PALE)
+    c.rect(x - 8, ytop - 4, 16, 4, stroke=1, fill=1)
+    c.rect(x - 2.2, ytop - 4 - length, 4.4, length, stroke=1, fill=1)
+    tip = ytop - 4 - length
+    c.drawPath(_poly(c, [(x - 2.2, tip), (x + 2.2, tip), (x, tip - 9)]), stroke=1, fill=1)
+    return tip - 9
+
+
+def fig_magnet(c, x, top, w, h):
+    # 図1：棒磁石のN極に鉄くぎの頭をつける
+    mx = x + 110
+    text(c, x + 30, top - 14, '図1', 10, bold=True)
+    my1, my0 = top - 8, top - 64
+    setline(c, 1)
+    c.setFillColor(colors.white)
+    c.rect(mx - 13, (my0 + my1) / 2, 26, (my1 - my0) / 2, stroke=1, fill=1)
+    c.setFillColor(SHADE)
+    c.rect(mx - 13, my0, 26, (my1 - my0) / 2, stroke=1, fill=1)
+    text(c, mx, (my0 + my1) / 2 + 9, 'S', 11, bold=True, center=True)
+    text(c, mx, my0 + 9, 'N', 11, bold=True, center=True, color=colors.white)
+    text(c, mx - 19 - tw('棒磁石', 8.5), (my0 + my1) / 2 - 3, '棒磁石', 8.5, color=MUTED)
+    tip = _nail_v(c, mx, my0, 48)
+    arrow(c, mx + 40, my0 - 6, mx + 10, my0 - 2, 5, .7, MUTED)
+    text(c, mx + 43, my0 - 9, '頭', 8.5, color=MUTED)
+    arrow(c, mx + 40, tip + 2, mx + 4, tip + 5, 5, .7, MUTED)
+    text(c, mx + 43, tip - 1, '先', 8.5, color=MUTED)
+    text(c, mx - 10 - tw('鉄くぎ', 8.5), my0 - 34, '鉄くぎ', 8.5, color=MUTED)
+    # 図2：鉄くぎに巻いたコイルと方位磁針
+    text(c, x + 250, top - 14, '図2', 10, bold=True)
+    y = top - 46
+    px0, px1 = x + 300, x + 420
+    setline(c, .9)
+    c.setFillColor(PALE)
+    c.rect(px0 - 4, y - 8, 4, 16, stroke=1, fill=1)
+    c.rect(px0, y - 3, px1 - px0, 6, stroke=1, fill=1)
+    setline(c, 1.1, ACCENT)
+    xs = [px0 + 14 + k * 9 for k in range(11)]
+    for xx in xs:
+        c.line(xx, y - 9, xx + 5, y + 9)
+    yw = top - h + 22
+    setline(c, 1)
+    c.line(xs[0], y - 9, xs[0], yw)
+    c.line(xs[-1] + 5, y - 9, xs[-1] + 5, yw)
+    mid = (xs[0] + xs[-1] + 5) / 2
+    c.line(xs[0], yw, mid - 26, yw)
+    _battery_h(c, mid - 26, yw)
+    c.line(mid - 21, yw, mid + 12, yw)
+    _dot(c, mid + 12, yw)
+    c.line(mid + 12, yw, mid + 32, yw + 2)          # スイッチ（入れたところ）
+    _dot(c, mid + 32, yw)
+    c.line(mid + 32, yw, xs[-1] + 5, yw)
+    text(c, mid - 30, yw - 16, 'かん電池', 8.5, color=MUTED)
+    text(c, mid + 12, yw - 16, 'スイッチ', 8.5, color=MUTED)
+    text(c, px1 + 4, y + 9, 'Y', 10, bold=True, color=ACCENT)
+    text(c, (px0 + px1) / 2 - 20, y + 15, 'コイル', 8.5, color=MUTED)
+    # 方位磁針（黒いほうがN極。N極がYのほうを向いている）
+    ox, r = px1 + 50, 15
+    setline(c, .9)
+    c.setFillColor(colors.white)
+    c.circle(ox, y, r, stroke=1, fill=1)
+    c.setFillColor(INK)
+    c.drawPath(_poly(c, [(ox - r + 3, y), (ox, y + 3.5), (ox, y - 3.5)]), stroke=0, fill=1)
+    c.setFillColor(colors.white)
+    c.drawPath(_poly(c, [(ox + r - 3, y), (ox, y + 3.5), (ox, y - 3.5)]), stroke=1, fill=1)
+    text(c, ox, y - r - 12, '方位磁針', 8.5, color=MUTED, center=True)
+    text(c, ox, y - r - 23, '（黒いほうがN極）', 8, color=MUTED, center=True)
+
+
+def fig_lever(c, x, top, w, h):
+    cx, u = x + w / 2, 28
+    by = top - 34
+    half = 6 * u + 14
+    setline(c, 1)
+    c.setFillColor(PALE)
+    c.rect(cx - half, by - 4, 2 * half, 8, stroke=1, fill=1)
+    # 支え
+    c.setFillColor(colors.white)
+    c.drawPath(_poly(c, [(cx, by - 4), (cx - 22, top - h + 10), (cx + 22, top - h + 10)]), stroke=1, fill=1)
+    c.setFillColor(PALE)
+    c.rect(cx - 40, top - h + 4, 80, 6, stroke=1, fill=1)
+    _dot(c, cx, by)
+    text(c, cx + 26, top - h + 20, '支点', 8.5, color=MUTED)
+    for k in range(1, 7):
+        for side in (-1, 1):
+            hx = cx + side * k * u
+            setline(c, .8)
+            c.setFillColor(colors.white)
+            c.circle(hx, by, 2.2, stroke=1, fill=1)
+            c.line(hx, by - 4, hx, by - 11)
+            c.arc(hx - 3, by - 17, hx + 3, by - 11, 180, 180)
+            text(c, hx, by + 10, str(k), 9, center=True)
+    text(c, cx - half - 16, by - 4, '左', 10, bold=True)
+    text(c, cx + half + 5, by - 4, '右', 10, bold=True)
+
+
 FIGS = {'monochord': fig_monochord, 'circuits': fig_circuits, 'moon': fig_moon,
-        'ice_graph': fig_ice_graph, 'pendulum': fig_pendulum}
+        'ice_graph': fig_ice_graph, 'pendulum': fig_pendulum,
+        'strata': fig_strata, 'magnet': fig_magnet, 'lever': fig_lever}
 
 
 # ---------- 表・本文ブロック ----------
