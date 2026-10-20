@@ -21,6 +21,7 @@ import tenri_rs_shakai1 as S1
 import tenri_rs_shakai2 as S2
 import tenri_rs_shakai3 as S3
 import tenri_rs_shakai4 as S4
+import tenri_rs_shakai5 as S5
 import world_outline
 from build_tenri_rs import SANKEN_ARROWS
 
@@ -980,7 +981,7 @@ def blanks_of(items):
     out = {}
     for _, t in items:
         for m in re.finditer(r'〔(.)〕', t):
-            out[m.group(1)] = t[:m.start()]
+            out.setdefault(m.group(1), t[:m.start()])        # 同じ記号が2回出るときは、最初の空らん
     return out
 
 
@@ -1105,6 +1106,121 @@ eq('社4-10(4) 世紀', ans(S4, 10, 4), [f'{century(int(k[:-1]))}世紀' for k i
 eq('社4-10(5) 時代', ans(S4, 10, 5), [era_of(int(k[:-1])) + '時代' for k in S4.SETS[9]['qs'][4]['labels']])
 eq('社4-10(6) 年数', ans(S4, 10, 6), f'{2026 - gengo["明治"]}年')
 eq('社4-10(8) 江戸幕府の世紀', ans(S4, 10, 8), f'{century(1603)}世紀')
+
+# ---------------- 社会・大問5 ----------------
+# 1 教育を受ける権利・税金・ユニバーサルデザイン
+b61 = blanks_of(S5.SETS[0]['items'])
+fact61 = {'すべて国民は、': '法律', 'ひとしく': '教育', '子どもに': '普通', '中学校をあわせた': str(6 + 3), '国民から集めた': '税金', 'デザインを、': 'ユニバーサル'}
+eq('社5-1(1) 空らん', ans(S5, 1, 1), [by_suffix(fact61, b61[k]) for k in 'アイウエオカ'])
+eq('社5-1(2) 三つの義務', [k in ans(S5, 1, 2) for k in ('普通教育', '勤労', '納税')], [True] * 3)
+tax = {'所得税': ('国', '直接'), '住民税': ('地方', '直接'), '消費税': ('国', '間接'), '固定資産税': ('地方', '直接'), '法人税': ('国', '直接')}
+eq('社5-1(4) 国税', ans(S5, 1, 4), join(k for k, v in choices(q_text(S5, 1, 4)).items() if tax[v][0] == '国'))
+ud51 = {'ノンステップバス': True, '絵文字（ピクトグラム）の案内表示': True, '幅のせまい階段': False, '高い位置だけにあるボタン': False}
+eq('社5-1(6) ユニバーサルデザイン', ans(S5, 1, 6), join(k for k, v in choices(q_text(S5, 1, 6)).items() if ud51[v]))
+eq('社5-1(7) 教科書無償から', ans(S5, 1, 7), f'{2026 - int(re.search(r"(\d{4})年からです", q_text(S5, 1, 7)).group(1))}年')
+
+# 2 国際連合
+b62 = blanks_of(S5.SETS[1]['items'])
+P5 = ['アメリカ', 'ロシア', '中国', 'イギリス', 'フランス']
+said62 = [c for c in P5 if c in S5.SETS[1]['items'][2][1]]
+assert len(said62) == 4
+fact62 = {'世界の': '平和', 'アメリカ合衆国の': 'ニューヨーク', '加盟国は、': '193', 'イギリスと、': [c for c in P5 if c not in said62][0],
+          '採択された': '持続可能な開発目標', '子どもの権利を守る': 'ユニセフ', '交流をすすめる': 'ユネスコ'}
+eq('社5-2(1) 空らん', ans(S5, 2, 1), [by_suffix(fact62, b62[k]) for k in 'アイウエオカキ'])
+eq('社5-2(2) 加盟から', ans(S5, 2, 2), f'{2026 - 1956}年')
+eq('社5-2(3) SDGsの期間', ans(S5, 2, 3), f'{2030 - 2015}年間')
+org62 = {'WHO': '健康', 'FAO': '食料・農業', 'UNESCO': '教育・科学・文化'}
+eq('社5-2(5) 健康の機関', ans(S5, 2, 5), [k for k, v in choices(q_text(S5, 2, 5)).items() if org62[v] == '健康'][0])
+
+# 3 2025年のできごと
+b63 = blanks_of(S5.SETS[2]['items'])
+fact63 = {'大阪・関西': '万博', '7月20日、': '参議院', '10月、': '高市', '坂口志文さんが': '生理', 'を調査期日として、': '国勢', '終わってから、': str(2025 - 1945)}
+eq('社5-3(1) 空らん', ans(S5, 3, 1), [by_suffix(fact63, b63[k]) for k in 'アイウエオカ'])
+eq('社5-3(2) 万博から', ans(S5, 3, 2), f'{2025 - 1970}年')
+seats63 = int(re.search(r'定数は(\d+)人', q_text(S5, 3, 3)).group(1))
+eq('社5-3(3) 過半数', ans(S5, 3, 3), f'{seats63 // 2 + 1}人')
+eq('社5-3(4) 任期と改選', ans(S5, 3, 4), [f'{6}年', f'{6 // 2}年ごとに半数'])
+nobel25 = {'文学賞': False, '化学賞': True, '物理学賞': False, '生理学・医学賞': True}                # 日本人の受賞は坂口志文さん・北川進さん
+eq('社5-3(6) ノーベル賞', ans(S5, 3, 6), join(k for k, v in choices(q_text(S5, 3, 6)).items() if nobel25[v]))
+assert (2025 - 1920) % 5 == 0
+eq('社5-3(7) 国勢調査', ans(S5, 3, 7), ['5年ごと', f'{2025 + 5}年'])
+
+# 4 国のお金と社会保障
+b64 = blanks_of(S5.SETS[3]['items'])
+fact64 = {'国の唯一の': '立法', '使い道の計画を': '予算', '担当する省は、': '財務', '足りない分を、': '国債', 'くらしを支える制度を、': '社会保障'}
+eq('社5-4(1) 空らん', ans(S5, 4, 1), [by_suffix(fact64, b64[k]) for k in 'アイウエオ'])
+eq('社5-4(3) 直接税・間接税', ans(S5, 4, 3), [tax[k][1] + '税' for k in S5.SETS[3]['qs'][2]['labels']])
+n64 = [int(x) for x in re.findall(r'(\d+)兆円', q_text(S5, 4, 6))]
+eq('社5-4(6) 割合', ans(S5, 4, 6), f'{round(n64[1] / n64[0] * 100)}%')
+fund64 = {'公立学校の運営': True, '民間の映画館の入場料': False, '道路や橋の整備': True, 'コンビニの商品代金': False}
+eq('社5-4(8) 税金でまかなう', ans(S5, 4, 8), join(k for k, v in choices(q_text(S5, 4, 8)).items() if fund64[v]))
+
+# 5 歴史：手がかり → 人物・語句、年代順
+feat65 = {'北条時宗': ['元が2度'], '板垣': ['自由民権運動'], '鑑真': ['唐招提寺'], '参勤交代': ['徳川家光'], '中臣鎌足': ['大化の改新'],
+          '勘合': ['足利義満'], '摂関政治': ['藤原氏'], 'ペリー': ['浦賀']}
+b65 = {blank_of(t): find(feat65, t) for _, t in S5.SETS[4]['items']}
+eq('社5-5(1) 空らん', ans(S5, 5, 1), [b65[k] for k in 'アイウエオカキク'])
+year65 = {'元が2度': 1274, '自由民権運動': 1874, '唐招提寺': 759, '徳川家光': 1635, '大化の改新': 645, '足利義満': 1404, '藤原氏': 1016, '浦賀': 1853}
+yr65 = {lab: [y for k, y in year65.items() if k in t][0] for lab, t in S5.SETS[4]['items']}
+eq('社5-5(2) 年代順', ans(S5, 5, 2), '→'.join(sorted(yr65, key=yr65.get)))
+port65 = {'神奈川': '神奈川県', '長崎': '長崎県', '新潟': '新潟県', '兵庫': '兵庫県', '函館': '北海道'}
+eq('社5-5(4) 北海道の港', ans(S5, 5, 4), [k for k, v in port65.items() if v == '北海道'][0])
+temple65 = {'法隆寺': '聖徳太子', '唐招提寺': '鑑真', '薬師寺': '天武天皇', '興福寺': '藤原氏'}
+eq('社5-5(3) 鑑真の寺', ans(S5, 5, 3), [k for k, v in choices(q_text(S5, 5, 3)).items() if temple65[v] == '鑑真'][0])
+
+# 6 年表
+rows66 = {int(r[0]): r[1] for r in S5.SETS[5]['table']['rows'][1:]}
+fact66 = {239: '卑弥呼', 710: '平城', 1185: '壇ノ浦', 1543: '種子', 1600: '関ヶ原', 1905: 'ポーツマス', 2011: '東日本'}
+eq('社5-6(1) 空らん', ans(S5, 6, 1), [fact66[y] for y, t in rows66.items() if '〔' in t])
+ev66 = {'平安京への遷都': 794, '元寇（文永の役）': 1274, '江戸幕府が開かれる': 1603, '明治維新': 1868}
+between = lambda y: f'{max(k for k in rows66 if k < y)}年と{min(k for k in rows66 if k > y)}年の間'
+eq('社5-6(2) 年表の間', ans(S5, 6, 2), [between(ev66[k]) for k in S5.SETS[5]['qs'][1]['labels']])
+oly66 = {'ロンドン': 2012, 'パリ': 2024, 'リオデジャネイロ': 2016, '東京': 2021}                       # 東京大会は1年延期され2021年開催
+ch66 = choices(q_text(S5, 6, 3))
+eq('社5-6(3) オリンピック順', ans(S5, 6, 3), '→'.join(sorted(ch66, key=lambda k: oly66[ch66[k]])))
+eq('社5-6(4) 年数', ans(S5, 6, 4), f'{2025 - 1964}年')
+assert 1853 + 1 == 1854 and '1854' in q_text(S5, 6, 6)
+
+# 7 発電：表から読み取る
+rows67 = {r[0]: r for r in S5.SETS[6]['table']['rows'][1:]}
+eq('社5-7(1) 燃料を使う発電', ans(S5, 7, 1), join(k for k, r in rows67.items() if re.search('石油|石炭|天然ガス|ウラン', r[1])))
+eq('社5-7(2) 二酸化炭素を多く出す', ans(S5, 7, 2), [k for k, r in rows67.items() if r[2] == '多く出る'][0])
+eq('社5-7(6) 2050年まで', ans(S5, 7, 6)[1], f'{2050 - 2026}年後')
+
+# 8 情報
+feat68 = {'メディア': ['情報を伝える手段'], 'デジタル': ['アナログ放送'], '個人情報': ['個人を特定'], '著作': ['作品をつくった人'], 'マイナンバー': ['番号をつけ']}
+b68 = {blank_of(t): find(feat68, t) for _, t in S5.SETS[7]['items']}
+eq('社5-8(1) 空らん', ans(S5, 8, 1), [b68[k] for k in 'アイウエオ'])
+eq('社5-8(2) テレビ放送から', ans(S5, 8, 2), f'{2026 - 1953}年')
+eq('社5-8(3) ラジオからテレビ', ans(S5, 8, 3), f'{1953 - 1925}年後')
+ok68 = {'友だちの写真を、許可なくインターネットにのせる': False, '宿題を、自分の言葉でまとめる': True, '出典を書いて、本の一部を引用する': True}
+eq('社5-8(5) してはいけない', ans(S5, 8, 5), [k for k, v in choices(q_text(S5, 8, 5)).items() if not ok68[v]][0])
+pw68 = {'誕生日': 1, '名前と同じ文字': 1, '長くて、ほかの人が当てにくい文字の組み合わせ': 20}            # 当てにくさの目安（字数）
+eq('社5-8(8) パスワード', ans(S5, 8, 8), max(choices(q_text(S5, 8, 8)).items(), key=lambda kv: pw68[kv[1]])[0])
+
+# 9 地方自治
+b69 = blanks_of(S5.SETS[8]['items'])
+fact69 = {'天理市は': '奈良', '市長と': '市議会', '市長や知事を': '首長', '任期は': '4', '定めるものを、': '条例', '税金を': '地方税', '国から': '地方交付税'}
+eq('社5-9(1) 空らん', ans(S5, 9, 1), [by_suffix(fact69, b69[k]) for k in 'アイウエオカキ'])
+age69 = {'市長': 25, '都道府県知事': 30, '市議会議員': 25}
+eq('社5-9(2) 被選挙権', ans(S5, 9, 2), [f'満{age69[k]}歳以上' for k in S5.SETS[8]['qs'][1]['labels']])
+eq('社5-9(3) 市町村の数', ans(S5, 9, 3), str(sum(int(x) for x in re.findall(r'(\d+)の', q_text(S5, 9, 3))) - 0))
+q69 = q_text(S5, 9, 5)
+eq('社5-9(5) 署名', ans(S5, 9, 5), f'{int(re.search(r"(\d+)万人", q69).group(1)) * 10000 // int(re.search(r"(\d+)分の1", q69).group(1))}人')
+eq('社5-9(7) 県庁所在地', ans(S5, 9, 7), CAPITAL.get('奈良県', '奈良県'[:-1] + '市'))
+
+# 10 法律ができるまでと裁判所
+b610 = blanks_of(S5.SETS[9]['items'])
+fact610 = {'参議院の': '委員会', '話し合われたあと、': '本会議', '法律になり、': '天皇', '内閣は、': '閣議', '最高裁判所と、': '下級', '制度を、': '三審'}
+eq('社5-10(1) 空らん', ans(S5, 10, 1), [by_suffix(fact610, b610[k]) for k in 'アイウエオカ'])
+duty610 = {'予算の議決': '国会', '法律が憲法に違反していないかの審査': '裁判所', '条約の承認': '国会', '内閣総理大臣の指名': '国会'}
+eq('社5-10(3) 国会の仕事', ans(S5, 10, 3), join(k for k, v in choices(q_text(S5, 10, 3)).items() if duty610[v] == '国会'))
+eq('社5-10(4) 過半数', ans(S5, 10, 4), f'{int(re.search(r"国務大臣が(\d+)人", q_text(S5, 10, 4)).group(1)) // 2 + 1}人')
+koto610 = {'札幌': '札幌高等裁判所', '仙台': '仙台高等裁判所', '東京': '東京高等裁判所', '名古屋': '名古屋高等裁判所', '大阪': '大阪高等裁判所',
+           '広島': '広島高等裁判所', '高松': '高松高等裁判所', '福岡': '福岡高等裁判所'}
+eq('社5-10(5) 高等裁判所の数', ans(S5, 10, 5), ['1か所', f'{len(koto610)}か所'])
+area610 = {'大阪高等裁判所': {'大阪', '京都', '兵庫', '奈良', '滋賀', '和歌山'}}
+eq('社5-10(6) 奈良の高等裁判所', ans(S5, 10, 6), [k for k, v in area610.items() if '奈良' in v][0])
 
 # ---------------- 形式（tools/tenri_rs_*.py をすべて） ----------------
 for f in sorted(Path(__file__).resolve().parent.glob('tenri_rs_*.py')):
