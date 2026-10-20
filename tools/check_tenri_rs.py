@@ -14,6 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import tenri_rs_rika1 as R1
 import tenri_rs_rika2 as R2
+import tenri_rs_rika3 as R3
 import tenri_rs_shakai1 as S1
 import tenri_rs_shakai2 as S2
 from build_tenri_rs import SANKEN_ARROWS
@@ -226,6 +227,140 @@ o10 = {v: k for k, v in choices(q_text(R2, 10, 3)).items()}
 eq('理2-10(3) 冬ごし', ans(R2, 10, 3), [o10[winter[n]] for n in R2.SETS[9]['qs'][2]['labels']])
 pupa = {'モンシロチョウ': True, 'カブトムシ': True, 'トンボ': False, 'バッタ': False}
 eq('理2-10(7) さなぎにならない', ans(R2, 10, 7), join(k for k, v in choices(q_text(R2, 10, 7)).items() if not pupa[v]))
+
+# ---------------- 理科・大問3 ----------------
+# 1 外来種・食物連鎖：在来種の表、「食べる→食べられる」の関係、数のふえ方
+native = {'ニホンアマガエル', 'ニホンザリガニ'}
+o31 = choices(q_text(R3, 1, 2))
+eq('理3-1(2) 外来種', ans(R3, 1, 2), join(k for k, v in o31.items() if v not in native))
+eats = {'ブルーギル': 'メダカ', 'メダカ': 'ミジンコ', 'ミジンコ': '植物プランクトン'}   # 食べるもの: 食べられるもの
+chain = ['植物プランクトン']
+while any(eats[k] == chain[-1] for k in eats):
+    chain.append([k for k in eats if eats[k] == chain[-1]][0])
+o33 = {v: k for k, v in choices(q_text(R3, 1, 3)).items()}
+eq('理3-1(3) 食物連鎖の順', ans(R3, 1, 3), '→'.join(o33[n] for n in chain))
+count = 10
+for _ in range(4):
+    count *= 2
+eq('理3-1(6) 4年後の数', ans(R3, 1, 6), f'{count}ひき')
+SDGS_GOALS, SDGS_YEAR = 17, 2030
+eq('理3-1(8) SDGs', ans(R3, 1, 8), [f'{SDGS_GOALS}個', f'{SDGS_YEAR}年'])
+
+# 2 水よう液：表の結果から、性質の組み合わせが一致する水よう液を探す
+sol3 = {'塩酸': (True, False, False, True), 'アンモニア水': (False, True, False, True), '食塩水': (False, False, True, False),
+        '炭酸水': (True, False, False, False), '石灰水': (False, True, True, False)}   # 酸性・アルカリ性・蒸発後に固体・におい
+rows = R3.SETS[1]['table']['rows']
+seen3 = {lab: ('赤色に変化' in rows[1][k], '青色に変化' in rows[2][k], '白い固体' in rows[3][k], 'つんと' in rows[4][k])
+         for k, lab in enumerate(rows[0]) if lab}
+name3 = {}
+for lab, pr in seen3.items():
+    hit = [n for n, v in sol3.items() if v == pr]
+    assert len(hit) == 1, (lab, hit)
+    name3[lab] = hit[0]
+eq('理3-2(1) 水よう液', ans(R3, 2, 1), [name3[l] for l in 'ABCDE'])
+eq('理3-2(2) BTBで黄色', ans(R3, 2, 2), join(l for l in 'ABCDE' if sol3[name3[l]][0]))
+eq('理3-2(3) 気体がとけている', ans(R3, 2, 3), join(l for l in 'ABCDE' if not sol3[name3[l]][2]))
+eq('理3-2(4) 石灰水に息', ans(R3, 2, 4), {'石灰水': '白くにごる'}[name3['E']])
+eq('理3-2(5) 炭酸水のあわ', ans(R3, 2, 5), {'炭酸水': '二酸化炭素'}[name3['D']])
+salt3 = 200 * 10 / 100
+eq('理3-2(6) 食塩の重さ', ans(R3, 2, 6), f'{num(salt3)}g')
+eq('理3-2(7) 加える水', ans(R3, 2, 7), f'{num(salt3 / 0.05 - 200)}g')
+
+# 3 アサガオ：図の記号、さいた最短の暗さ、時刻
+parts = {'ア': 'がく', 'イ': '花びら', 'ウ': 'おしべ', 'エ': 'めしべ', 'オ': '子房'}
+eq('理3-3(1) 図の部分', ans(R3, 3, 1), [parts[k] for k in R3.SETS[2]['qs'][0]['labels']])
+rows = R3.SETS[2]['table']['rows']
+dark = min(int(h[:-2]) for h, f in zip(rows[0][1:], rows[1][1:]) if f == 'さいた')
+assert all(f == 'さかない' for h, f in zip(rows[0][1:], rows[1][1:]) if int(h[:-2]) < dark)
+eq('理3-3(4) さく最短の暗さ', ans(R3, 3, 4), f'{dark}時間')
+eq('理3-3(5) ひらく時刻', ans(R3, 3, 5), f'午前{(19 + dark) % 24}時')
+both = {'ヘチマ': False, 'アブラナ': True, 'カボチャ': False, 'ツツジ': True}
+eq('理3-3(8) 両性花', ans(R3, 3, 8), join(k for k, v in choices(q_text(R3, 3, 8)).items() if both[v]))
+
+# 4 空気
+eq('理3-4(3) ちぢんだ体積', ans(R3, 4, 3), f'{100 - 60}mL')
+squeeze = {'自転車のタイヤ': True, 'ねん土': False, 'バスケットボール': True, '食塩水': False}
+eq('理3-4(5) おしちぢめる性質', ans(R3, 4, 5), join(k for k, v in choices(q_text(R3, 4, 5)).items() if squeeze[v]))
+eq('理3-4(6) ピンポン玉', ans(R3, 4, 6), [k for k, v in choices(q_text(R3, 4, 6)).items() if '体積が大きくなった' in v][0])
+eq('理3-4(7) 空気の重さ', ans(R3, 4, 7), f'{num(1.2 * 20)}g')
+oil = {'油圧ショベル': True, '風船': False, 'ビーチボール': False}
+eq('理3-4(8) 液体を利用', ans(R3, 4, 8), [k for k, v in choices(q_text(R3, 4, 8)).items() if oil[v]][0])
+
+# 5 月：表の時刻、1日にずれる時間
+rows = R3.SETS[4]['table']['rows']
+moon = {r[0]: r[1:] for r in rows[1:]}              # 月の形: [月の出, 南中, 月の入り]
+eq('理3-5(1) 満月の南中', ans(R3, 5, 1), moon['満月'][1])
+o35 = choices(q_text(R3, 5, 2))
+eq('理3-5(2) 午後6時に東', ans(R3, 5, 2), [k for k, v in o35.items() if moon[v][0] == '午後6時'][0])
+eq('理3-5(3) 明け方に南', ans(R3, 5, 3), [m for m, t in moon.items() if t[1] == '午前6時'][0])
+lit = {'上弦の月': '右側', '下弦の月': '左側'}      # 北半球で南の空に見るとき光っている側
+eq('理3-5(4) 上弦の月', ans(R3, 5, 4), lit[[m for m, t in moon.items() if t[1] == '午後6時' and m in lit][0]])
+eq('理3-5(6) 2回後の満月', ans(R3, 5, 6), f'{num(29.5 * 2)}日後')
+mins = 18 * 60 + 50 * 3
+eq('理3-5(7) 3日後の月の出', ans(R3, 5, 7), f'午後{mins // 60 - 12}時{mins % 60}分')
+fact5 = {'地球のまわりを回っている': True, '自分で光を出している': False, '表面にクレーターがある': True, '海があり、水がたまっている': False}
+eq('理3-5(9) 月の正しい説明', ans(R3, 5, 9), join(k for k, v in choices(q_text(R3, 5, 9)).items() if fact5[v]))
+
+# 6 気温グラフ：図のデータ（build の args）から読む
+pts = R3.SETS[5]['fig']['args']['pts']
+tmax, tmin = max(v for t, v in pts), min(v for t, v in pts)
+eq('理3-6(1) 最高気温と時刻', ans(R3, 6, 1), [f'{tmax}℃', f'{[t for t, v in pts if v == tmax][0]}時'])
+eq('理3-6(2) 気温の差', ans(R3, 6, 2), f'{tmax - tmin}℃')
+day_name = {35: '猛暑日', 30: '真夏日', 25: '夏日'}
+eq('理3-6(3) 用語', ans(R3, 6, 3), [day_name[35], '熱帯夜'])
+eq('理3-6(4) あてはまるか', ans(R3, 6, 4), ['あてはまる' if tmax >= 35 else 'あてはまらない', 'あてはまる' if tmin >= 25 else 'あてはまらない'])
+eq('理3-6(5) 国内最高気温', ans(R3, 6, 5), '41.8℃')
+eq('理3-6(6) アメダス', ans(R3, 6, 6), [k for k, v in choices(q_text(R3, 6, 6)).items() if '1300' in v][0])
+
+# 7 動物：(何類, 体温が一定, 乳で育てる, 一生えらで呼吸, 子のころえら→おとなは肺, 陸上に卵を産む)
+zoo = {'スズメ': ('鳥類', True, False, False, False, True), 'ウサギ': ('ほ乳類', True, True, False, False, False),
+       'フナ': ('魚類', False, False, True, False, False), 'カメ': ('は虫類', False, False, False, False, True),
+       'イモリ': ('両生類', False, False, False, True, False), 'クジラ': ('ほ乳類', True, True, False, False, False)}
+letter = {v: k for k, v in choices(R3.SETS[6]['lead']).items()}
+pick7 = lambda i: join(letter[n] for n, f in zoo.items() if f[i])
+eq('理3-7(1) 体温一定', ans(R3, 7, 1), pick7(1))
+eq('理3-7(2) 乳で育てる', ans(R3, 7, 2), pick7(2))
+eq('理3-7(3) 一生えら', ans(R3, 7, 3), pick7(3))
+eq('理3-7(4) えら→肺', ans(R3, 7, 4), pick7(4))
+eq('理3-7(5) 陸上に卵', ans(R3, 7, 5), pick7(5))
+klass = {'ペンギン': '鳥類', 'イルカ': 'ほ乳類', 'サンショウウオ': '両生類', 'ウミガメ': 'は虫類'}
+eq('理3-7(6) 何類', ans(R3, 7, 6), [klass[n] for n in R3.SETS[6]['qs'][5]['labels']])
+eq('理3-7(8) 大人になる割合', ans(R3, 7, 8), f'{num(10 / 10000 * 100)}%')
+
+# 8 台風：風の向きの足し算、雲量、言い伝え
+import math as _m
+def wind(theta_deg, travel=(0, 1)):
+    t = _m.radians(theta_deg)
+    tx, ty = -_m.sin(t), _m.cos(t)                       # 反時計回りの向き
+    return _m.hypot(tx + travel[0], ty + travel[1])
+side = {'A': wind(0), 'B': wind(180)}                    # Aは進行方向の右（東）、Bは左（西）
+eq('理3-8(4) 風が強い側', ans(R3, 8, 4), max(side, key=side.get))
+eq('理3-8(5) 着くまでの時間', ans(R3, 8, 5), f'{600 // 30}時間後')
+cloud = lambda n: '快晴' if n <= 1 else '晴れ' if n <= 8 else 'くもり'
+eq('理3-8(7) 雲量9割以上', ans(R3, 8, 7), cloud(9))
+eq('理3-8(1) 台風の発生', ans(R3, 8, 1), [k for k, v in choices(q_text(R3, 8, 1)).items() if v == '水温の高い海'][0])
+omen = {'ツバメが低く飛ぶ': '悪化', '夕焼けがきれいに見える': '好転', '朝に虹が見える': '悪化', '月にぼんやりしたかさがかかる': '悪化'}
+o38 = choices(q_text(R3, 8, 8))
+eq('理3-8(8) 悪くなる前ぶれ', ans(R3, 8, 8)[1], join(k for k, v in o38.items() if omen[v] == '悪化'))
+
+# 9 給食：食べる部分、食物連鎖
+part = {'ジャガイモ': 'くき', 'ニンジン': '根'}
+eq('理3-9(1) ジャガイモ', ans(R3, 9, 1), [k for k, v in choices(q_text(R3, 9, 1)).items() if v == part['ジャガイモ']][0])
+eq('理3-9(2) ニンジン', ans(R3, 9, 2), part['ニンジン'])
+eq('理3-9(7) デンプンの重さ', ans(R3, 9, 7), f'{num(80 * 0.75)}g')
+food = ['イネ', 'バッタ', 'カエル', 'ヘビ']
+i = food.index('バッタ')
+eq('理3-9(8) バッタがふえると', ans(R3, 9, 8), [food[i - 1], food[i + 1]])
+
+# 10 蒸散：A=くきだけ、B=表をふさぐ（裏＋くき）、C=裏をふさぐ（表＋くき）、D=ふさがない（表＋裏＋くき）
+rows = R3.SETS[9]['table']['rows']
+water = {t: float(v) for t, v in zip(rows[0][1:], rows[2][1:])}
+stem, top10, bottom10 = water['A'], water['D'] - water['B'], water['D'] - water['C']
+assert abs(stem + top10 + bottom10 - water['D']) < 1e-9          # 3つの部分の合計がDになる
+eq('理3-10(4) 葉の裏', ans(R3, 10, 4), f'{bottom10:.1f}mL')
+eq('理3-10(5) 葉の表', ans(R3, 10, 5), f'{top10:.1f}mL')
+eq('理3-10(6) くき', ans(R3, 10, 6), f'{stem:.1f}mL')
+eq('理3-10(7) 蒸散がさかんな面', ans(R3, 10, 7), '裏' if bottom10 > top10 else '表')
 
 # ---------------- 社会・大問1 ----------------
 capital = {'青森県': '青森市', '静岡県': '静岡市', '京都府': '京都市', '香川県': '高松市', '新潟県': '新潟市',

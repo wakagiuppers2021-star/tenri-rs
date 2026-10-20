@@ -555,9 +555,145 @@ def fig_sanken(c, x, top, w, h):
         badge((sx + ex) / 2, (sy + ey) / 2, lab, MUTED)
 
 
+def fig_linegraph(c, x, top, w, h, pts=(), xmax=24, xstep=3, ymin=20, ymax=40, ystep=5, xlab='', ylab=''):
+    """折れ線グラフ。pts は (横, 縦) の組。目盛りの数字だけで、点の値は書かない。"""
+    gx0, gx1 = x + 120, x + 390
+    gy0, gy1 = top - h + 30, top - 24
+
+    def X(t): return gx0 + (gx1 - gx0) * t / xmax
+    def Y(v): return gy0 + (gy1 - gy0) * (v - ymin) / (ymax - ymin)
+    for v in range(ymin, ymax + 1, ystep):
+        setline(c, .35, LINE)
+        c.line(gx0, Y(v), gx1, Y(v))
+        text(c, gx0 - 6 - tw(str(v), 8), Y(v) - 3, str(v), 8, color=MUTED)
+    for t in range(0, xmax + 1, xstep):
+        setline(c, .35, LINE)
+        c.line(X(t), gy0, X(t), gy1)
+        text(c, X(t), gy0 - 11, str(t), 8, color=MUTED, center=True)
+    setline(c, 1, INK)
+    c.line(gx0, gy0, gx1, gy0)
+    c.line(gx0, gy0, gx0, gy1)
+    text(c, gx0 - 30, gy1 + 13, ylab, 8.5)
+    text(c, (gx0 + gx1) / 2, gy0 - 24, xlab, 8.5, center=True)
+    setline(c, 1.8, ACCENT)
+    for (t1, v1), (t2, v2) in zip(pts, pts[1:]):
+        c.line(X(t1), Y(v1), X(t2), Y(v2))
+    c.setFillColor(ACCENT)
+    for t, v in pts:
+        c.circle(X(t), Y(v), 2.4, stroke=0, fill=1)
+
+
+def fig_flower(c, x, top, w, h):
+    """アサガオの花の縦の切り口。ア〜オの記号をつける。"""
+    cx = x + w / 2
+    yb = top - h + 14
+
+    def funnel(k, fill):
+        p = c.beginPath()
+        p.moveTo(cx - 9 * k, yb + 26)
+        p.curveTo(cx - 14 * k, yb + 52, cx - 44 * k, yb + 70, cx - 46 * k, yb + 104)
+        p.lineTo(cx + 46 * k, yb + 104)
+        p.curveTo(cx + 44 * k, yb + 70, cx + 14 * k, yb + 52, cx + 9 * k, yb + 26)
+        p.close()
+        c.setFillColor(fill)
+        c.drawPath(p, fill=1, stroke=1)
+
+    setline(c, .9)
+    # がく（根もとの小さな葉）
+    c.setFillColor(LINE)
+    for sd in (-1, 1):
+        c.drawPath(_poly(c, [(cx + sd * 4, yb + 6), (cx + sd * 30, yb + 22), (cx + sd * 10, yb + 24)]), fill=1, stroke=1)
+    funnel(1, PALE)
+    funnel(.8, colors.white)
+    # おしべ（先にやくがある）
+    for xs in (-16, -8, 10, 17):
+        setline(c, .9)
+        c.line(cx + xs * .4, yb + 32, cx + xs, yb + 70)
+        c.setFillColor(SHADE)
+        c.ellipse(cx + xs - 3.4, yb + 69, cx + xs + 3.4, yb + 76, stroke=1, fill=1)
+    # めしべ（子房・花柱・柱頭）
+    setline(c, 1.1)
+    c.line(cx, yb + 24, cx, yb + 88)
+    c.setFillColor(colors.white)
+    c.circle(cx, yb + 16, 9, stroke=1, fill=1)
+    c.circle(cx, yb + 90, 3.6, stroke=1, fill=1)
+    # 記号と引き出し線
+    def mark(lab, lx, ly, tx, ty):
+        setline(c, .6, MUTED)
+        c.line(lx, ly + 3.5, tx, ty)
+        text(c, lx, ly, lab, 10.5, bold=True, color=ACCENT, center=True)
+
+    mark('ア', cx - 62, yb + 10, cx - 24, yb + 15)
+    mark('イ', cx - 64, yb + 84, cx - 40, yb + 90)
+    mark('ウ', cx + 62, yb + 60, cx + 21, yb + 72)
+    mark('エ', cx + 36, yb + 118, cx + 3, yb + 92)
+    mark('オ', cx + 38, yb + 6, cx + 9, yb + 14)
+
+
+def fig_syringe(c, x, top, w, h):
+    """空気と水を入れた注射器。ピストンは100mLの目盛りまで引いてある。"""
+    base = top - h + 22
+    bh = 62
+    for cx, kind, lab in ((x + w / 2 - 90, 'air', '空気'), (x + w / 2 + 90, 'water', '水')):
+        y0, y1 = base + 10, base + 10 + bh
+        setline(c, 1)
+        c.setFillColor(colors.white)
+        c.rect(cx - 2.5, base, 5, 10, stroke=1, fill=1)
+        c.setFillColor(PALE if kind == 'water' else colors.white)
+        c.rect(cx - 20, y0, 40, bh, stroke=1, fill=1)
+        if kind == 'air':
+            c.setFillColor(SHADE)
+            for r, yy in enumerate(range(int(y0) + 6, int(y1) - 2, 9)):
+                for xx in range(int(cx) - 14 + (r % 2) * 6, int(cx) + 16, 12):
+                    c.circle(xx, yy, .9, stroke=0, fill=1)
+        c.setFillColor(colors.white)
+        c.rect(cx - 5, y1, 10, 24, stroke=1, fill=1)
+        c.rect(cx - 16, y1 + 24, 32, 5, stroke=1, fill=1)
+        c.setFillColor(INK)
+        c.rect(cx - 20, y1 - 3, 40, 3, stroke=0, fill=1)        # ピストンのゴム
+        for k, v in enumerate(range(0, 101, 20)):
+            yy = y0 + bh * v / 100
+            setline(c, .6, MUTED)
+            c.line(cx - 20, yy, cx - 25, yy)
+            text(c, cx - 28 - tw(str(v), 8), yy - 3, str(v), 8, color=MUTED)
+        text(c, cx, base - 12, lab, 10, bold=True, center=True)
+        arrow(c, cx, y1 + 52, cx, y1 + 34, 5, 1, ACCENT)
+        text(c, cx + 14, y1 + 40, 'おす', 8.5, color=ACCENT)
+    text(c, x + w / 2, base + 12, '目盛りの単位は mL', 8.5, color=MUTED, center=True)
+
+
+def fig_typhoon(c, x, top, w, h):
+    """北半球の台風。風は中心に向かって反時計回りにふきこむ。A・Bは進行方向のどちら側か。"""
+    cx, cy = x + w / 2 - 40, top - h / 2
+    for r in (26, 46, 66):
+        setline(c, .6, LINE, (3, 2))
+        c.circle(cx, cy, r, stroke=1, fill=0)
+    c.setDash()
+    for r, off in ((56, 0), (36, 22.5)):
+        for k in range(8):
+            th = math.radians(off + k * 45)
+            px, py = cx + r * math.cos(th), cy + r * math.sin(th)
+            tx, ty = -math.sin(th), math.cos(th)          # 反時計回り
+            ix, iy = -math.cos(th), -math.sin(th)         # 中心に向かう
+            vx, vy = .85 * tx + .45 * ix, .85 * ty + .45 * iy
+            arrow(c, px - vx * 8, py - vy * 8, px + vx * 8, py + vy * 8, 5, .9, ACCENT)
+    setline(c, 1)
+    c.setFillColor(colors.white)
+    c.circle(cx, cy, 8, stroke=1, fill=1)
+    ax = cx + 125
+    arrow(c, ax, cy - 32, ax, cy + 36, 7, 1.6, INK)
+    text(c, ax + 10, cy - 2, '台風の進行方向', 9)
+    for lab, px in (('A', cx + 88), ('B', cx - 88)):
+        setline(c, 1)
+        c.setFillColor(PALE)
+        c.circle(px, cy, 9, stroke=1, fill=1)
+        text(c, px, cy - 3.6, lab, 10, bold=True, center=True)
+
+
 FIGS = {'monochord': fig_monochord, 'circuits': fig_circuits, 'moon': fig_moon,
         'ice_graph': fig_ice_graph, 'pendulum': fig_pendulum,
-        'strata': fig_strata, 'magnet': fig_magnet, 'lever': fig_lever, 'sanken': fig_sanken}
+        'strata': fig_strata, 'magnet': fig_magnet, 'lever': fig_lever, 'sanken': fig_sanken,
+        'linegraph': fig_linegraph, 'flower': fig_flower, 'syringe': fig_syringe, 'typhoon': fig_typhoon}
 
 
 # ---------- 表・本文ブロック ----------
@@ -690,14 +826,14 @@ def render_problem(c, subj, dai, i, st, total, qs):
     if fig and tab:          # 図を左、表を右
         fh = fig['h']
         if not DRY:
-            FIGS[fig['name']](c, LM, y, 150, fh)
+            FIGS[fig['name']](c, LM, y, 150, fh, **fig.get('args', {}))
         colw = tab['colw']
         draw_table(c, RM - sum(colw), y - (fh - len(tab['rows']) * tab.get('size', 9.5) * 1.9) / 2,
                    tab['rows'], colw, tab.get('size', 9.5))
         y -= fh + 8
     elif fig:
         if not DRY:
-            FIGS[fig['name']](c, LM, y, RM - LM, fig['h'])
+            FIGS[fig['name']](c, LM, y, RM - LM, fig['h'], **fig.get('args', {}))
         y -= fig['h'] + 14
     elif tab:
         colw = tab['colw']
