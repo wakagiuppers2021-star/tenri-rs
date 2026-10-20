@@ -491,9 +491,73 @@ def fig_lever(c, x, top, w, h):
     text(c, cx + half + 5, by - 4, '右', 10, bold=True)
 
 
+# 三権分立の図の矢印（①〜⑥）。check_tenri_rs.py の検算もこの向きで作っている。
+SANKEN_ARROWS = [('①', '国会', '内閣'), ('②', '内閣', '国会'), ('③', '国会', '裁判所'),
+                 ('④', '裁判所', '国会'), ('⑤', '内閣', '裁判所'), ('⑥', '裁判所', '内閣')]
+
+
+def fig_sanken(c, x, top, w, h):
+    cx = x + w / 2
+    bw, bh = 104, 28
+    box = {'国会': (cx, top - 18), '内閣': (cx - 168, top - h + 20), '裁判所': (cx + 168, top - h + 20)}
+    for name, (bx, by) in box.items():
+        setline(c, 1)
+        c.setFillColor(PALE)
+        c.rect(bx - bw / 2, by - bh / 2, bw, bh, stroke=1, fill=1)
+        text(c, bx, by - 4.5, name, 12, bold=True, center=True)
+
+    def edge(p, q, gap=5):
+        """箱pの中心から箱qの中心へ向かう線が、箱pのふちを出る点。"""
+        (px, py), (qx, qy) = box[p], box[q]
+        dx, dy = qx - px, qy - py
+        t = min(bw / 2 / abs(dx) if dx else 9e9, bh / 2 / abs(dy) if dy else 9e9)
+        L = math.hypot(dx, dy)
+        return px + dx * t + dx / L * gap, py + dy * t + dy / L * gap
+
+    def badge(x0, y0, lab, color, ring=True):
+        """記号を、線の上に白い丸をしいて書く。①〜⑥は文字に丸があるので、外の丸線は引かない。"""
+        c.setFillColor(colors.white)
+        setline(c, .7, color)
+        c.circle(x0, y0, 7.5, stroke=1 if ring else 0, fill=1)
+        text(c, x0, y0 - 3.8, lab, 10, bold=True, color=color, center=True)
+
+    for lab, p, q in SANKEN_ARROWS:
+        (px, py), (qx, qy) = box[p], box[q]
+        L = math.hypot(qx - px, qy - py)
+        # 組（p, q）ごとに、名前順で決めた向きの法線で左右に分ける
+        a, b = sorted((p, q))
+        (ax, ay), (bx2, by2) = box[a], box[b]
+        nx, ny = -(by2 - ay) / L, (bx2 - ax) / L
+        off = 7 * (1 if p == a else -1)
+        x1, y1 = edge(p, q)
+        x2, y2 = edge(q, p)
+        x1, y1, x2, y2 = x1 + nx * off, y1 + ny * off, x2 + nx * off, y2 + ny * off
+        arrow(c, x1, y1, x2, y2, 6, 1, INK)
+        # 記号は矢印の出発点寄りに置く（同じ組の2本で位置がずれる）
+        badge(x1 + (x2 - x1) * .3, y1 + (y2 - y1) * .3, lab, ACCENT, ring=False)
+    # 国民
+    gx, gy = cx, top - h / 2 - 6
+    setline(c, 1)
+    c.setFillColor(colors.white)
+    c.ellipse(gx - 32, gy - 13, gx + 32, gy + 13, stroke=1, fill=1)
+    text(c, gx, gy - 4.5, '国民', 11, bold=True, center=True)
+    for lab, name, (sx, sy) in [('X', '国会', (gx, gy + 13)), ('Y', '内閣', (gx - 24, gy - 9)),
+                                ('Z', '裁判所', (gx + 24, gy - 9))]:
+        bx, by = box[name]
+        if bx == gx:
+            ex, ey = bx, by - bh / 2 - 3
+        else:
+            ex, ey = bx + (bw / 2 - 14) * (1 if bx < gx else -1), by + bh / 2 + 3
+        setline(c, .8, MUTED, (3, 2))
+        c.line(sx, sy, ex, ey)
+        c.setDash()
+        arrow(c, sx + (ex - sx) * .8, sy + (ey - sy) * .8, ex, ey, 5, .8, MUTED)
+        badge((sx + ex) / 2, (sy + ey) / 2, lab, MUTED)
+
+
 FIGS = {'monochord': fig_monochord, 'circuits': fig_circuits, 'moon': fig_moon,
         'ice_graph': fig_ice_graph, 'pendulum': fig_pendulum,
-        'strata': fig_strata, 'magnet': fig_magnet, 'lever': fig_lever}
+        'strata': fig_strata, 'magnet': fig_magnet, 'lever': fig_lever, 'sanken': fig_sanken}
 
 
 # ---------- 表・本文ブロック ----------
