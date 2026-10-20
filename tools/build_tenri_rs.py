@@ -77,10 +77,13 @@ def wrap(s, width, size=10, bold=False):
         line = ''
         for ch in part:
             if line and tw(line + ch, size, bold) > width:
-                if ch in '、。）」』】・,.' and len(line) > 1:
+                if line[-1] in '（「『【〔' and len(line) > 1:
+                    out.append(line[:-1])                          # 始めのかっこは、行末に残さない
+                    line = line[-1] + ch
+                elif ch in '、。）」』】〕・,.' and len(line) > 1:
                     k = len(line) - 1
-                    while k > 1 and _word(line[k]) and _word(line[k - 1]):
-                        k -= 1                                   # 数字や英字のかたまりは、まるごと次の行へ
+                    while k > 1 and ((_word(line[k]) and _word(line[k - 1])) or line[k - 1] in '（「『【〔　'):
+                        k -= 1                                   # 数字や英字のかたまり、〔　〕の空らんは、まるごと次の行へ
                     out.append(line[:k])
                     line = line[k:] + ch
                 elif _word(ch) and _word(line[-1]):

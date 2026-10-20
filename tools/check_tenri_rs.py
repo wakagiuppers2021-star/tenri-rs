@@ -20,6 +20,7 @@ import tenri_rs_rika5 as R5
 import tenri_rs_shakai1 as S1
 import tenri_rs_shakai2 as S2
 import tenri_rs_shakai3 as S3
+import tenri_rs_shakai4 as S4
 import world_outline
 from build_tenri_rs import SANKEN_ARROWS
 
@@ -972,6 +973,138 @@ o310 = choices(q_text(S3, 10, 5))
 yr10 = {'愛・地球博': 2005, '長野': 1998, '阪神': 1995, '東日本': 2011}
 eq('社3-10(5) できごとの順', ans(S3, 10, 5), '→'.join(sorted(o310, key=lambda k: [y for n, y in yr10.items() if n in o310[k]][0])))
 eq('社3-10(7) 古都奈良にふくまれない', ans(S3, 10, 7), [k for k, v in choices(q_text(S3, 10, 7)).items() if v not in kuni['古都奈良の文化財']][0])
+
+# ---------------- 社会・大問4 ----------------
+def blanks_of(items):
+    """〔ア〕などの空らんと、その直前の文字を {記号: 直前の文} にする。"""
+    out = {}
+    for _, t in items:
+        for m in re.finditer(r'〔(.)〕', t):
+            out[m.group(1)] = t[:m.start()]
+    return out
+
+
+def by_suffix(table, pre):
+    hit = [v for k, v in table.items() if pre.endswith(k)]
+    assert len(hit) == 1, (pre, hit)
+    return hit[0]
+
+
+# 1 国会・内閣・裁判所
+b41 = blanks_of(S4.SETS[0]['items'])
+fact41 = {'国権の': '最高', '参議院の': '二院', '国会が指名した': '内閣総理大臣', '首相は': '高市早苗', '裁判官とともに刑事裁判を行う': '裁判員'}
+eq('社4-1(1) 空らん', ans(S4, 1, 1), [by_suffix(fact41, b41[k]) for k in 'アイウエオ'])
+age41 = {'衆議院議員': 25, '参議院議員': 30}
+eq('社4-1(2) 被選挙権', ans(S4, 1, 2), [f'満{age41[k]}歳以上' for k in S4.SETS[0]['qs'][1]['labels']])
+duty41 = {'法律をつくる': '国会', '外国と条約を結ぶ': '内閣', '裁判官をやめさせるかどうか決める': '国会', '予算案をつくって国会に出す': '内閣'}
+eq('社4-1(5) 内閣の仕事', ans(S4, 1, 5), join(k for k, v in choices(q_text(S4, 1, 5)).items() if duty41[v] == '内閣'))
+task41 = {'国の防衛': '防衛省', '自然環境や地球温暖化の対策': '環境省', '農業・林業・水産業': '農林水産省', '道路・鉄道・空港・観光': '国土交通省'}
+eq('社4-1(6) 省', ans(S4, 1, 6), [task41[v] for _, v in re.findall(r'([①②③④]) ([^　\n]+)', q_text(S4, 1, 6))])
+eq('社4-1(7) 裁判員', ans(S4, 1, 7), f'{9 - 3}人')                      # 裁判官3人と裁判員6人で、合議体は9人
+
+# 2 スーパーマーケット：消費税と期限表示
+p42 = int(re.search(r'税ぬき(\d+)円', q_text(S4, 2, 1)).group(1))
+r42 = int(re.search(r'税率は(\d+)%', q_text(S4, 2, 1)).group(1))
+eq('社4-2(1) 税込み', ans(S4, 2, 1), f'{p42 + p42 * r42 // 100}円')
+rate42 = {'飲食料品': 8, 'ふつうの商品': 10}                                # 軽減税率の対象は飲食料品
+eq('社4-2(2) ふつうの税率', ans(S4, 2, 2), f'{rate42["ふつうの商品"]}%')
+shelf42 = {'缶詰': 720, 'お弁当': 1}                                       # 日持ちの目安（日）。おおむね5日以内は消費期限
+eq('社4-2(4) 期限表示', ans(S4, 2, 4), ['消費期限' if shelf42[k] <= 5 else '賞味期限' for k in S4.SETS[1]['qs'][3]['labels']])
+
+# 3 工業地帯
+feat43 = {'中京工業地帯': ['豊田市'], '阪神工業地帯': ['大阪湾'], '京浜工業地帯': ['東京湾'], '瀬戸内工業地域': ['瀬戸内海']}
+eq('社4-3(1) 工業地帯', ans(S4, 3, 1), [find(feat43, t) for _, t in S4.SETS[2]['items']])
+b43 = blanks_of(S4.SETS[2]['items'])
+fact43 = {'豊田市を中心に、': '自動車', '東大阪市などに、': '中小', '石油化学': 'コンビナート'}
+eq('社4-3(2) 空らん', ans(S4, 3, 2), [by_suffix(fact43, b43[k]) for k in 'アイウ'])
+n43 = int(re.search(r'1日に(\d+)台', q_text(S4, 3, 4)).group(1)) * int(re.search(r'約(\d+)万個', q_text(S4, 3, 4)).group(1))
+eq('社4-3(4) 部品の数', ans(S4, 3, 4), f'{n43}万個')
+kind43 = {'自動車': '重化学', 'せんい': '軽', '石油化学': '重化学', '食料品': '軽'}
+eq('社4-3(6) 軽工業', ans(S4, 3, 6), join(k for k, v in choices(q_text(S4, 3, 6)).items() if kind43[v] == '軽'))
+
+# 4 修学旅行：手がかり → 県 → 地方・県庁所在地・世界遺産
+spot44 = {'青森県': ['ねぶた祭'], '沖縄県': ['首里城'], '石川県': ['兼六園'], '高知県': ['桂浜'], '島根県': ['松江城']}
+pref44 = {k: find(spot44, t) for k, t in S4.SETS[3]['items']}
+eq('社4-4(1) 県名', ans(S4, 4, 1), [pref44[k] for k in 'ABCDE'])
+region8 = lambda p: ('北海道' if CODE[p] == 1 else '東北' if CODE[p] <= 7 else '関東' if CODE[p] <= 14 else '中部' if CODE[p] <= 23
+                     else '近畿' if CODE[p] <= 30 else '中国' if CODE[p] <= 35 else '四国' if CODE[p] <= 39 else '九州') + '地方'
+eq('社4-4(2) 地方', ans(S4, 4, 2), [region8(pref44[k]) for k in 'ABCDE'])
+eq('社4-4(3) 県名と県庁所在地名がちがう', ans(S4, 4, 3), join(k for k in 'ABCDE' if not same_name(pref44[k])))
+eq('社4-4(4) 世界遺産', ans(S4, 4, 4), join(k for k in 'ABCDE' if any(pref44[k] in h[3] for h in HERITAGE)))
+share44 = 70.3                                                          # 沖縄県にある米軍専用施設の割合（%）●●
+opt44 = {'ア': 10, 'イ': 30, 'ウ': 70}
+eq('社4-4(5) 米軍専用施設', ans(S4, 4, 5), min(opt44, key=lambda k: abs(opt44[k] - share44)))
+hokuriku = ['東京', '大宮', '長野', '富山', '金沢', '小松', '加賀温泉', '芦原温泉', '福井', '越前たけふ', '敦賀']   # 2024年3月に金沢から先が開業
+eq('社4-4(6) 北陸新幹線', ans(S4, 4, 6), hokuriku[-1] + '駅')
+eq('社4-4(7) 出雲大社', ans(S4, 4, 7)[:4], {'出雲大社': '大国主命'}['出雲大社'])
+eq('社4-4(8) 果物1位', ans(S4, 4, 8), {'青森県': 'りんご'}[pref44['A']])
+
+# 5 日本国憲法と天皇
+def after_months(y, m, d, n):
+    t = y * 12 + (m - 1) + n
+    return f'{t // 12}年{t % 12 + 1}月{d}日'
+
+
+eq('社4-5(2) 公布と施行', ans(S4, 5, 2), ['1946年11月3日', after_months(1946, 11, 3, 6)])   # 公布から6か月後に施行
+eq('社4-5(3) 施行から', ans(S4, 5, 3), f'{2026 - 1947}年')
+eq('社4-5(6) 令和何年', ans(S4, 5, 6), f'令和{2026 - 2019 + 1}年')
+three = ['もたず', 'つくらず', 'もちこませず']
+eq('社4-5(8) 非核三原則', ans(S4, 5, 8), [w for w in three if w not in q_text(S4, 5, 8)][0])
+
+# 6 正しい文・誤った文：文ごとの正誤から、組み合わせを決める
+true46 = {
+    '聖徳太子は、冠位十二階や十七条の憲法を定めた。': True, '中大兄皇子と中臣鎌足は、蘇我氏をたおして、大化の改新を始めた。': True,
+    '平清盛は、武士として初めて太政大臣になった。': True, '源頼朝の死後、足利氏が代々執権となって、幕府の政治を行った。': False,   # 執権は北条氏
+    '織田信長は、関ヶ原の戦いに勝って、全国をほぼ統一した。': False, '豊臣秀吉は、検地や刀狩を行って、武士と百姓の身分を区別した。': True,
+    '江戸幕府は、鎖国のあいだ、長崎で、中国と朝鮮だけと貿易をした。': False, '徳川家康は、1600年に壇ノ浦の戦いに勝って、将軍になった。': False,
+    '日本国憲法は、1946年11月3日に公布された。': True, '参議院議員の任期は4年で、解散がある。': 6 == 4,                 # 任期6年・解散なし
+    '日清戦争のあと、日本は、ポーツマス条約を結んだ。': False, '日露戦争の講和条約で、日本は、賠償金を得られなかった。': True,
+    '国会議員を選ぶ選挙で、投票できるのは、満18歳以上である。': 18 == 18, '税金を納めることは、国民の三つの義務の1つである。': True,
+    '2026年10月現在、日本の世界遺産は、30件をこえている。': len(HERITAGE) > 30,
+    '奈良県にある世界遺産は、2026年に登録された「飛鳥・藤原の宮都」だけである。': [h[0] for h in HERITAGE if '奈良県' in h[3]] == ['飛鳥・藤原の宮都'],
+}
+letter46 = {(True, True): 'ア', (True, False): 'イ', (False, True): 'ウ', (False, False): 'エ'}
+for i in range(1, 9):
+    a_, b_ = [l[2:] for l in q_text(S4, 6, i).split('\n') if l[:2] in ('A　', 'B　')]
+    eq(f'社4-6({i}) 正誤', ans(S4, 6, i), letter46[(true46[a_], true46[b_])])
+assert len([h for h in HERITAGE if '奈良県' in h[3]]) == 4
+
+# 7 2026年のできごと
+b47 = blanks_of(S4.SETS[6]['items'])
+fact47 = {'第51回': '衆議院', '特別国会で、': '高市', '7月28日、': '熊本', '8月13日から14日、': '千葉', '約': '67'}
+eq('社4-7(1) 空らん', ans(S4, 7, 1), [by_suffix(fact47, b47[k]) for k in 'アイウエオ'])
+eq('社4-7(2) 3分の2', ans(S4, 7, 2), f'{465 * 2 // 3}人')
+assert 316 > 465 * 2 // 3
+eq('社4-7(4) 年数', ans(S4, 7, 4), f'{2026 - 2016}年前')
+n47 = [int(x) for x in re.findall(r'約(\d+)万人', q_text(S4, 7, 7))]
+eq('社4-7(7) 出生数の差', ans(S4, 7, 7), f'{n47[0] - n47[1]}万人')
+
+# 8 地震：表から読み取る
+rows48 = S4.SETS[7]['table']['rows'][1:]
+name48 = {2011: '東日本', 2024: '能登'}
+eq('社4-8(1) 空らん', ans(S4, 8, 1), [name48[int(r[0])] for r in rows48 if '〔' in r[1]])
+eq('社4-8(2) 最大のマグニチュード', ans(S4, 8, 2), f'{max(rows48, key=lambda r: float(r[2]))[0]}年')
+eq('社4-8(3) エネルギー', ans(S4, 8, 3), f'約{round(32 ** round(9.0 - 7.0), -2)}倍')
+eq('社4-8(7) 自助・共助・公助', ans(S4, 8, 7), [{'自分や家族で守る': '自助', '地域の人どうしで助け合う': '共助', '国や自治体が行う': '公助'}[k] for k in S4.SETS[7]['qs'][6]['labels']])
+
+# 9 年中行事
+feat49 = {'節分': ['2月3日'], '桃': ['3月3日'], '七夕': ['7月7日'], 'ススキ': ['旧暦8月15日'], 'ゆず': ['12月22日'], '年越しそば': ['12月31日']}
+b49 = {blank_of(t): find(feat49, t) for _, t in S4.SETS[8]['items']}
+eq('社4-9(1) 空らん', ans(S4, 9, 1), [b49[k] for k in 'アイウエオカ'])
+city49 = {'ねぶた祭': '青森市', '竿燈まつり': '秋田市', '阿波おどり': '徳島市', '博多祇園山笠': '福岡市'}
+cap = lambda p: CAPITAL.get(p, p[:-1] + '市')
+eq('社4-9(7) まつりの県', ans(S4, 9, 7), [[p for p in PREF if cap(p) == city49[k]][0] for k in S4.SETS[8]['qs'][6]['labels']])
+
+# 10 元号・西暦・世紀・時代
+gengo = {'明治': 1868, '大正': 1912, '昭和': 1926, '平成': 1989, '令和': 2019}
+eq('社4-10(1) 元年', ans(S4, 10, 1), [f'{gengo[k]}年' for k in S4.SETS[9]['qs'][0]['labels']])
+eq('社4-10(2) 平成何年', ans(S4, 10, 2), f'平成{2000 - gengo["平成"] + 1}年')
+eq('社4-10(3) 昭和何年まで', ans(S4, 10, 3), f'昭和{gengo["平成"] - gengo["昭和"] + 1}年')              # 1989年1月7日が昭和64年の最後の日
+century = lambda y: (y - 1) // 100 + 1
+eq('社4-10(4) 世紀', ans(S4, 10, 4), [f'{century(int(k[:-1]))}世紀' for k in S4.SETS[9]['qs'][3]['labels']])
+eq('社4-10(5) 時代', ans(S4, 10, 5), [era_of(int(k[:-1])) + '時代' for k in S4.SETS[9]['qs'][4]['labels']])
+eq('社4-10(6) 年数', ans(S4, 10, 6), f'{2026 - gengo["明治"]}年')
+eq('社4-10(8) 江戸幕府の世紀', ans(S4, 10, 8), f'{century(1603)}世紀')
 
 # ---------------- 形式（tools/tenri_rs_*.py をすべて） ----------------
 for f in sorted(Path(__file__).resolve().parent.glob('tenri_rs_*.py')):
