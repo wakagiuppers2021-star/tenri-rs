@@ -28,6 +28,7 @@ import tenri_rs_shakai4 as S4
 import tenri_rs_shakai5 as S5
 import tenri_rs_sansu4 as M4
 import tenri_rs_kokugo1 as K1
+import tenri_rs_kokugo2 as K2
 import world_outline
 from build_tenri_rs import SANKEN_ARROWS, SHAPES
 
@@ -1968,6 +1969,73 @@ non_elem = lambda t_: [ch_ for ch_ in t_ if is_kanji(ch_) and not KG.elementary(
 n1_, bad1_ = check_kanji_set(K1)
 eq(f'国1 漢字{n1_}問（読み・書き取り・送りがな・熟語の選択・部首・画数）の答え', bad1_, [])
 assert all(len(st_['qs']) == 15 for st_ in K1.SETS)
+
+# ---------------- 国語・大問2（語句・熟語） ----------------
+# 作問のとき、JMdict（PyPIの jamdict-data）で、言葉の実在と意味を確かめた。ここでは、その表と、データが食いちがっていないかを調べる。
+JUKUGO_TYPE = {                                                           # 熟語の組み立て（ア 似た意味／イ 反対の意味／ウ 修飾／エ 目的・対象／オ 主述／カ 打ち消し）
+    '増減': 'イ', '洗顔': 'エ', '地震': 'オ', '白紙': 'ウ', '森林': 'ア', '開閉': 'イ', '強風': 'ウ', '登山': 'エ', '未来': 'カ', '学習': 'ア',
+    '前後': 'イ', '新年': 'ウ', '乗車': 'エ', '頭痛': 'オ', '無理': 'カ', '身体': 'ア', '出入': 'イ', '作文': 'エ', '高低': 'イ', '登校': 'エ',
+}
+ANTONYM = {
+    '増加': '減少', '成功': '失敗', '原因': '結果', '過去': '未来', '安全': '危険', '開会': '閉会', '勝利': '敗北', '質問': '回答', '拡大': '縮小',
+    '前進': '後退', '集合': '解散', '直接': '間接', '理想': '現実', '長所': '短所',
+}
+YOJI = {
+    '一石二鳥', '十人十色', '以心伝心', '自画自賛', '起承転結', '温故知新', '晴耕雨読', '絶体絶命', '大器晩成', '大同小異', '四苦八苦', '弱肉強食',
+    '不言実行', '無我夢中', '一日千秋', '心機一転', '完全無欠', '意味深長', '空前絶後', '老若男女', '千差万別', '古今東西', '自給自足', '一心不乱',
+    '適材適所', '半信半疑', '公明正大',
+}
+IDIOMS = {
+    'ねこの手も借りたい', '耳を疑う', '顔が広い', '肩の荷が下りる', '青菜に塩', '目が高い', 'すずめのなみだ', '馬の耳に念仏', '口が重い', '胸をなでおろす',
+    '首を長くして待つ', '足を引っぱる', '腹を割って話す', '鼻が高い', '手が足りない', '足が出る', '頭が下がる', '肩を並べる', '目を丸くする', '気が重い',
+    '歯が立たない', '首をかしげる', '肩を落とす', '腕が鳴る', '胸を打つ', '耳が痛い', '骨が折れる', '急がば回れ', '七転び八起き', '灯台もと暗し',
+    '百聞は一見にしかず', '手を焼く', '目を皿にする', '足を運ぶ', '頭をかかえる', '石の上にも三年', '花よりだんご', '雨降って地固まる',
+    '立つ鳥あとをにごさず', 'まかぬ種は生えぬ', '後悔先に立たず', '良薬は口に苦し', '備えあればうれいなし', '住めば都', '笑う門には福来たる',
+    'ころばぬ先のつえ', '足を洗う', '手を貸す', '気が長い',
+}
+
+
+def check_goku_set(mod):
+    """語句・熟語の問題の答えを、表と、問題文・選択肢から調べ直す。(問題数, 不一致の一覧) を返す。"""
+    bad, n_ = [], 0
+    for i_, st_ in enumerate(mod.SETS, 1):
+        for j_, q_ in enumerate(st_['qs'], 1):
+            n_ += 1
+            tag = f'{i_}-{j_}'
+            m_, a_, qt_ = q_['meta'], q_['ans'], q_['q']
+            t_ = m_['t']
+            if t_ == 'J':
+                if len(a_) != 2 or a_[1] != m_['hint'] or f'［{m_["hint"]}］' not in qt_ or non_elem(a_):
+                    bad.append((tag, '意味から熟語', a_, m_['hint']))
+            elif t_ == 'C':
+                if JUKUGO_TYPE.get(m_['word']) != a_ or f'「{m_["word"]}」' not in qt_:
+                    bad.append((tag, '熟語の組み立て', m_['word'], a_, JUKUGO_TYPE.get(m_['word'])))
+            elif t_ == 'A':
+                if ANTONYM.get(m_['word']) != a_ or ANTONYM.get(a_) not in (None, m_['word']) or non_elem(a_):
+                    bad.append((tag, '対義語', m_['word'], a_))
+            elif t_ == 'Y':
+                if m_['word'] not in YOJI or m_['word'][m_['idx']] != a_ or '〔　〕' not in qt_ or non_elem(m_['word']):
+                    bad.append((tag, '四字熟語', m_['word'], a_))
+            elif t_ == 'I':
+                if (m_['idiom'] not in IDIOMS or m_['pre'] + a_ + m_['post'] != m_['idiom'] or m_['pre'] + '〔　〕' + m_['post'] not in qt_
+                        or non_elem(a_)):
+                    bad.append((tag, '慣用句の空らん', m_['idiom'], a_))
+            elif t_ in ('K', 'L', 'M'):
+                opts_ = re.findall(r'(?:^|\n|　)([アイウエ]) ([^\n　]+)', qt_)
+                if [k_ for k_, _ in opts_] != list('アイウエ') or a_ not in 'アイウエ' or len({o_ for _, o_ in opts_}) != 4:
+                    bad.append((tag, '選択肢', opts_, a_))
+                elif t_ == 'K' and (m_['idiom'] not in IDIOMS or dict(opts_)[a_] != m_['idiom']):
+                    bad.append((tag, '慣用句の選択', m_['idiom'], a_))
+                elif t_ == 'L' and (m_['idiom'] not in IDIOMS or f'「{m_["idiom"]}」' not in qt_):
+                    bad.append((tag, '慣用句の意味の選択', m_['idiom'], a_))
+            if not q_['ex']:
+                bad.append((tag, '解説がない'))
+    return n_, bad
+
+
+# ---------------- 国語・大問2（語句・熟語） ----------------
+n2_, bad2_ = check_goku_set(K2)
+eq(f'国2 語句・熟語{n2_}問（意味から熟語・組み立て・対義語・四字熟語・慣用句）の答え', bad2_, [])
 
 # ---------------- 形式（tools/tenri_rs_*.py をすべて） ----------------
 for f in sorted(Path(__file__).resolve().parent.glob('tenri_rs_*.py')):
