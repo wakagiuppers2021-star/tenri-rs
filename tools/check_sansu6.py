@@ -146,7 +146,7 @@ for i in range(nn):
             sum_h += h_x
             cnt_h += 1
 mean_h = sum_h / cnt_h
-eq('算6-2(3) 円柱の切断（積分）：高さの平均×底面積（円周率3.14）', ans(M6, 2, 3), f'{fmt(round(PI * r2 * r2 * Fr(round(mean_h, 4)).limit_denominator(1000), 2))}cm³')
+eq('算6-2(3) 円柱の切断（積分）：高さの平均×底面積（円周率3.14）', ans(M6, 2, 3), f'{fmt(round(PI * r2 * r2 * Fr(str(round(mean_h, 3))), 2))}cm³')
 boxes2 = dict(a2[2][1])['boxes']
 vox = [set((x, y, z) for x in range(b[0], b[3]) for y in range(b[1], b[4]) for z in range(b[2], b[5])) for b in boxes2]
 union2 = set().union(*vox)
@@ -180,13 +180,15 @@ def count_color(n, color):
 
 
 eq('算6-3 図の、1〜4番目の黒の数（1・3・6・10）', [count_color(n, 1) for n in ns3], [1, 3, 6, 10])
-eq('算6-3(1) 5番目の黒', ans(M6, 3, 1), f'{count_color(5, 1)}個')
-eq('算6-3(2) 40番目の白', ans(M6, 3, 2), f'{count_color(40, 0)}個')
-need3 = first_num(re.search(r'黒い正方形が(\d+)個', q_text(M6, 3, 3)).group(0))
+n31 = int(re.search(r'(\d+)番目の図形の中に、黒い', q_text(M6, 3, 1)).group(1))
+eq('算6-3(1) 5番目の黒', ans(M6, 3, 1), f'{count_color(n31, 1)}個')
+n32 = int(re.search(r'(\d+)番目の図形の中に、白い', q_text(M6, 3, 2)).group(1))
+eq('算6-3(2) 40番目の白', ans(M6, 3, 2), f'{count_color(n32, 0)}個')
+need3 = int(re.search(r'黒い正方形が(\d+)個', q_text(M6, 3, 3)).group(1))
 which3 = [n for n in range(1, 200) if count_color(n, 1) == need3]
 eq('算6-3(3) 黒が105個になる番号（ならべて数える）', ans(M6, 3, 3), f'{which3[0]}番目' if len(which3) == 1 else None)
-last3 = first_num(re.search(r'10番目', q_text(M6, 3, 4)).group(0))
-eq('算6-3(4) 1〜10番目の黒の合計', ans(M6, 3, 4), f'{sum(count_color(n, 1) for n in range(1, 11))}個')
+n34 = int(re.search(r'1番目から(\d+)番目まで', q_text(M6, 3, 4)).group(1))
+eq('算6-3(4) 1〜10番目の黒の合計', ans(M6, 3, 4), f'{sum(count_color(n, 1) for n in range(1, n34 + 1))}個')
 eq('算6-3 黒と白が、どの番号でも同じ数（市松もよう）', all(count_color(n, 1) == count_color(n, 0) for n in range(1, 60)), True)
 
 # ============================================================ 第04セット：立体の体積3つ
@@ -199,6 +201,11 @@ eq('算6-4(1) 台形の柱（面積を格子で数え、おくゆきをかける
 eq('算6-4(1) 台形の面積（ショーレースの公式でも）', round(area_t), shoelace(trap))
 rv = dict(a4[1][1])
 poly4 = [(Fr(u), Fr(v)) for u, v in rv['poly']]
+# 回転する図形に書きこんだ長さが、点の座標（軸からの横・高さ）から出る値と一致するか
+lab_rv = sorted(int(re.sub(r'\D', '', l[-1])) for l in rv['labels'])
+xs4 = sorted({u for u, _ in poly4})
+ys4 = sorted({v for _, v in poly4})
+eq('算6-4(2) 回転する図形の、長さの書きこみ（6・3・5・4・2）', lab_rv, sorted([xs4[-1], ys4[1] - ys4[0], ys4[2] - ys4[1], xs4[-1] - xs4[1], xs4[1] - xs4[0]]))
 
 
 def slice_intervals(poly, z):
@@ -331,12 +338,7 @@ box_ok = all(sum(1 for v in verts7 if v[k] == lo) == 4 for k in range(3) for lo 
 eq('算6-7 8つの頂点が、直方体の8つのかど', box_ok, True)
 
 
-def normal_of(m):
-    O, U, V, n = m
-    return tuple(n)
-
-
-face_n = {have7[k]: normal_of(m) for k, m in maps7.items()}               # 面の名前 → 内向きの法線（軸に平行なので、その向きで、面の位置がわかる）
+face_n = {have7[k]: m[3] for k, m in maps7.items()}                       # 面の名前 → 内向きの法線（軸に平行なので、その向きで、面の位置がわかる）
 face_axis = {nm: [k for k in range(3) if n[k] != 0][0] for nm, n in face_n.items()}
 face_side = {}
 for (c, r), m in maps7.items():                                           # その面が、直方体の、どの軸のどちらがわ（最小・最大）にあるか
@@ -429,6 +431,22 @@ meet10 = int(re.search(r'出発して(\d+)分後に', q10[4]).group(1))
 sol10 = [v for v in range(1, 1000) if (va10 + v) * meet10 == dist10]
 eq('算6-10(5) 友だちの速さ（総あたり）', ans(M6, 10, 5), f'分速{sol10[0]}m' if len(sol10) == 1 else None)
 eq('算6-10 図の木の数と、問題文の木の数は別（図は1列に5本）', fig_args(10)['n'], 5)
+
+# ============================================================ 図に書いた数が、解説で使われている（図と解説のくいちがいを防ぐ）
+def uses(setno, qno, need):
+    got = set(nums(SETS[setno - 1]['qs'][qno - 1]['ex']))
+    return [n for n in need if Fr(n) not in got]
+
+
+eq('算6-2(2) 解説が、図アの数（8・5・4本の高さ）を使っている', uses(2, 2, [cb['L'], cb['W'], hFL, hFR, hBR, hBL]), [])
+eq('算6-2(3) 解説が、図イの数（直径の半分4・高さ9と5）を使っている', uses(2, 3, [r2, hl2, hr2]), [])
+eq('算6-2(4) 解説が、図ウの数（6・3・2）を使っている', uses(2, 4, edges2), [])
+eq('算6-4(1) 解説が、図(1)の数（上底・下底・高さ・おくゆき）を使っている', uses(4, 1, [tp['b1'], tp['b2'], tp['hh'], tp['d']]), [])
+eq('算6-4(2) 解説が、図(2)の数（6・3・5・2）を使っている', uses(4, 2, [xs4[-1], ys4[1], ys4[2] - ys4[1], xs4[1]]), [])
+eq('算6-4(3) 解説が、図(3)の数（9・6・3・4・180）を使っている', uses(4, 3, [Lp, Hp, pxs1 - pxs0, ppd, vol_target]), [])
+eq('算6-6(1) 解説が、図(1)の数（5・12・9）を使っている', uses(6, 1, [tri['hh'], tri['b'], tri['d']]), [])
+eq('算6-6(2) 解説が、図(2)の数（12・6・7・4・2・3）を使っている', uses(6, 2, [nt['L'], nt['D'], nt['H'], nx1 - nx0, nh, nd]), [])
+eq('算6-8 解説が、図の数（半径5・高さ8・1辺3・対角線6）を使っている', uses(8, 1, [r8, h8]) + uses(8, 2, [s8, h8]) + uses(8, 4, [diag8, h8]), [])
 
 # ============================================================ 全体：形式・漢字・解説の式
 eq('算6 セットの数と、年度の順', [s['year'] for s in SETS], [2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015])

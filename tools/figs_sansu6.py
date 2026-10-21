@@ -308,10 +308,10 @@ def register(B):
         lab(c, P(b / 2, 0, 0)[0], P(0, 0, 0)[1] - 11, f'{b:g}cm')
         lab(c, P(0, 0, hh / 2)[0] - 4, P(0, 0, hh / 2)[1], f'{hh:g}cm', anchor='r')
         if a.get('slant'):                                       # 斜辺の長さ：斜辺のすぐ上（かげの面の中）
-            m = P(b / 2, 0, hh / 2)
+            m = P(.75 * b, 0, .25 * hh)
             nx, ny = hh, b
             nl = math.hypot(nx, ny)
-            lab(c, m[0] + nx / nl * 13, m[1] + ny / nl * 13, a['slant'], 8.5, halo=SHADE)
+            lab(c, m[0] + nx / nl * 12, m[1] + ny / nl * 12, a['slant'], 8.5, halo=SHADE)
         lab(c, P(b, d / 2, 0)[0] + 5, P(b, d / 2, 0)[1] - 8, f'{d:g}cm', anchor='l')
 
     def sh_fnotch(c, px, pw, rtop, rh, a):

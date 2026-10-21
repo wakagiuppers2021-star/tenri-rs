@@ -22,7 +22,7 @@ s5_plane  : 平面の図を、パネル（(1)(2)…）にならべる。座標�
               ('carrow', (cx, cy), r, a0, a1, opts)    弧の矢印（a1がわに矢じり）
             検算（tools/check_sansu5.py）は、この座標から、斜線部分の面積などを、公式とは別に数え上げて確かめる。
 s5_solids : 立体の見取図を、(1)(2)(3)とならべる（同じ縮尺）。args=dict(solids=[dict(kind='prism'|'pipe', ...), ...])
-            prism : 正面の多角形 pts（(x, z)、左まわり）を、おくゆき d にのばした柱。dims=[(点1, 点2, 'ラベル', dx, dy), ...]（点は (x, y, z)）、
+            prism : 正面の多角形 pts（(x, z)、左まわり）を、おくゆき d にのばした柱。dims=[(点1, 点2, 'ラベル', dx, dy[, 1]), ...]（点は (x, y, z)。最後の1は白い下地）、
                     dash=[((x, z), (x, z)), ...]（正面の面にかく点線）。
             pipe  : 円柱（半径 R、高さ h）から、同じ軸の円柱（半径 r）をくりぬいた立体。
             cap   : 図の下の説明（文字列のリスト）。
@@ -304,9 +304,15 @@ def register(B):
             setline(c, .8, INK, (3, 2))
             c.line(*P(p1[0], 0, p1[1]), *P(p2[0], 0, p2[1]))
         setline(c, .8)
-        for (q1, q2, lab, dx, dy) in s.get('dims', []):
+        for dm in s.get('dims', []):
+            q1, q2, lab, dx, dy = dm[:5]
             a, b = P(*q1), P(*q2)
-            text(c, (a[0] + b[0]) / 2 + dx, (a[1] + b[1]) / 2 + dy - 3, lab, 9, center=True)
+            mx, my = (a[0] + b[0]) / 2 + dx, (a[1] + b[1]) / 2 + dy
+            if len(dm) > 5 and dm[5]:                              # 白い下地
+                ww = tw(lab, 9)
+                c.setFillColor(colors.white)
+                c.rect(mx - ww / 2 - 1.5, my - 5, ww + 3, 10, stroke=0, fill=1)
+            text(c, mx, my - 3, lab, 9, center=True)
 
     def draw_pipe(c, cx, ybot, sc, s):
         R, r, hh = s['R'], s['r'], s['h']

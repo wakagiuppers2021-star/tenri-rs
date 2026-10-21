@@ -83,7 +83,7 @@ FIG5 = dict(name='s5_solids', h=176, args=dict(solids=[
     dict(kind='prism', pts=[(0, 0), (8, 0), (8, 3), (4, 6), (0, 6)], d=5,
          dash=[((4, 6), (8, 6)), ((8, 6), (8, 3))],
          dims=[((0, 0, 0), (8, 0, 0), '8cm', 0, -9), ((0, 0, 0), (0, 0, 6), '6cm', -14, 0), ((8, 0, 0), (8, 5, 0), '5cm', 10, -6),
-               ((4, 0, 6), (8, 0, 6), '4cm', 0, 9), ((8, 0, 3), (8, 0, 6), '3cm', 13, 0)],
+               ((4, 0, 6), (8, 0, 6), '4cm', 0, 9, 1), ((8, 0, 3), (8, 0, 6), '3cm', 13, 0, 1)],
          cap=['直方体の角を、', 'まっすぐに切りとった立体']),
 ]))
 
@@ -122,7 +122,7 @@ FIG6 = dict(name='s5_plane', h=150, args=dict(panels=[
         ('pt', (0, 6), 'A', dict(dx=0, dy=9)), ('pt', (8, 0), 'B', dict(dx=9, dy=4)), ('pt', (0, 0), 'C', dict(dx=-9, dy=-7)),
         ('lbl', (0, 3.4), '6cm', dict(size=8, dx=15, bg=True)),
         ('lbl', (4, 0), '8cm', dict(size=8, dy=9, bg=True)),
-        ('lbl', (4, 3), '10cm', dict(size=8, dx=15, dy=11, bg=True)),
+        ('lbl', (4, 3), '10cm', dict(size=8, dx=12, dy=9, bg=True)),
     ]),
     dict(cap='(4)', wt=1.3, prims=[
         ('poly', [(0, 0), (12, 0), (12, 8), (0, 8)], dict(fill='hatch', nostroke=True)),
@@ -136,7 +136,7 @@ FIG6 = dict(name='s5_plane', h=150, args=dict(panels=[
         ('arc', (0, 4), 2, 90, 270, {}), ('arc', (12, 4), 2, -90, 90, {}),
         ('dim', (0, 8), (12, 8), '12cm', dict(side=1, off=8)),
         ('dim', (16, 0), (16, 8), '8cm', dict(side=-1, off=8)),
-        ('lbl', (-3, 4), '2cm', dict(size=7.5)),
+        ('lbl', (6, 7), '2cm', dict(size=7.5, bg=True)),
     ]),
 ]))
 
