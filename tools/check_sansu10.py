@@ -7,10 +7,10 @@
   第04 水そうとブロック：水そうの底面積を、1つずつためして、グラフの点と合うものをさがす。
   第05 場合の数：itertools で数え上げ。あまりと人数は、人数を1つずつためす。組み合わせの人数は、全部の組を数える。
   第06 歩はば：歩はばと歩数を、cm・歩で別の形に書いて、道のりを1つずつためす。
-  第07 三角形の面積：座標とショーレースで、面積が等しい点の位置を、ためして求める。
+  第07 三角形の面積：座標（ショーレース）で、4つの面積が等しくなる点の位置を、1つずつためして求める（解は1つだけ）。
   第08 規則性：実際に数を並べて、数える。
-  第09 正方形を重ねた図形：格子の上で、正方形をぬりつぶして、周・面積・頂点を数える。
-  第10 流水算：船と木の葉の位置を、折れ線から求めて、出会う時刻を1次式で解く。
+  第09 正方形をジグザグに重ねた図形：格子の上で、正方形をぬりつぶして、周・面積・頂点を数える。
+  第10 流水算（エンジンが止まった船）：船を1/60分ごとに実際に動かして、グラフの点・終点・止まらなかったときの時刻を確かめる。
 """
 import itertools
 import math
@@ -192,9 +192,7 @@ school3 = grab(r'(\d+)mはなれた', lead_of(3))
 eq('算10-3 学校までの道のりと、グラフの終点', school3, pts3[-1][1])
 eq('算10-3 折れ線の点が、方眼の交点にある', [p for p in pts3 if p[0] != int(p[0]) or p[1] % 300 != 0], [])
 g3 = lambda t: interp(pts3, Fr(t))
-run3 = (g3(5) - g3(7)) / 2                                          # 走るとき：5分後〜7分後に、300mを進んでもどる
 eq('算10-3(1) 走った速さ（途中の2点の差から）', a_(3, 1), (g3(Fr(11, 2)) - g3(Fr(13, 2))) / 1)
-bike3 = (g3(Fr(29, 2)) - g3(Fr(19, 2))) / 10                        # 9分後〜19分後のまん中あたり、1分間の進み
 eq('算10-3(2) 自転車の速さ', a_(3, 2), g3(15) - g3(14))
 walk3 = g3(1) - g3(0)                                              # 最初の1分に進む道のり＝歩く速さ
 arrive3 = min(Fr(k, 60) for k in range(0, int(60 * pts3[-1][0]) + 1) if g3(Fr(k, 60)) == school3)
@@ -244,7 +242,7 @@ eq('算10-4(1) 底面積', a_(4, 1), S4)
 eq('算10-4(2) 1分間に入れる水の量', a_(4, 2), R4)
 eq('算10-4(3) 水面が40cmになる時刻', a_(4, 3), water_volume(S4, tank_h4) / R4)
 eq('算10-4 グラフの最後の点（52分後）', pts4[-1], (water_volume(S4, tank_h4) / R4, tank_h4))
-t4 = int(grab(r'(\d+)分後に水を止めて', q_text(M10, 4, 4)) if re.search(r'(\d+)分後に水を止めて', q_text(M10, 4, 4)) else grab(r'から(\d+)分後に水を止めて', q_text(M10, 4, 4)))
+t4 = int(grab(r'から(\d+)分後に水を止めて', q_text(M10, 4, 4)))
 eq('算10-4(4) ブロックを取り出したあとの水面の高さ（水の量÷底面積）', a_(4, 4), R4 * t4 / S4)
 eq('算10-4(4) 取り出したあとの水面は、ブロックの高さより低い（水そうの底全体に広がる）', R4 * t4 / S4 < max(f4['cols']) * cube4, True)
 
@@ -301,6 +299,10 @@ def tri_area(p, q, r):
     return abs((q[0] - p[0]) * (r[1] - p[1]) - (r[0] - p[0]) * (q[1] - p[1])) / 2
 
 
+def quad_area(pts):
+    return abs(sum(pts[i][0] * pts[(i + 1) % len(pts)][1] - pts[(i + 1) % len(pts)][0] * pts[i][1] for i in range(len(pts)))) / 2
+
+
 def build7(c, d):
     """AB＝AB7 の直角三角形で、ACの長さc・点Dの位置d・F＝D＋DF7。E（辺BC上）は、三角形DBEの面積が三角形ABDと等しくなる位置。"""
     A, B, C = (Fr(0), Fr(0)), (Fr(0), Fr(AB7)), (Fr(c), Fr(0))
@@ -317,7 +319,7 @@ def build7(c, d):
 
 
 sol7 = []
-for c in range(DF7 + 1, 60):
+for c in range(DF7 + 1, 80):
     for d2 in range(1, 2 * c):
         d = Fr(d2, 2)
         if d + DF7 >= c:
@@ -331,14 +333,18 @@ for c in range(DF7 + 1, 60):
             sol7.append((c, d, t, areas[0]))
 eq('算10-7 4つの面積が等しくなる配置は、1つだけ', len(sol7), 1)
 c7, d7, t7, area7 = sol7[0]
-eq('算10-7(1) AD÷AC', a_(7, 1), d7 / c7)
+sol_pts7 = build7(c7, d7)
+A7_, B7_, C7_, D7_, E7_, F7_, _ = sol_pts7
+parts7 = [d7, DF7, c7 - d7 - DF7]
+g7 = math.gcd(math.gcd(int(parts7[0] * 2), int(parts7[1] * 2)), int(parts7[2] * 2))
+eq('算10-7(1) AD：DF：FC', ans(M10, 7, 1), '：'.join(str(int(x * 2) // g7) for x in parts7))
 ratio7 = t7 / (1 - t7)                                                    # BE÷EC
 eq('算10-7(2) BE：EC', ans(M10, 7, 2), f'{ratio7.numerator}：{ratio7.denominator}')
 eq('算10-7(3) AC', a_(7, 3), c7)
-eq('算10-7(4) 三角形DEFの面積', a_(7, 4), area7)
+eq('算10-7(4) 四角形BDFEの面積（B・D・F・Eの座標から）', a_(7, 4), quad_area([B7_, D7_, F7_, E7_]))
+eq('算10-7(4) 四角形BDFEの面積＝三角形DBE＋三角形DEF', quad_area([B7_, D7_, F7_, E7_]), tri_area(D7_, B7_, E7_) + tri_area(D7_, E7_, F7_))
 # 図の座標が、この配置と同じ
 fig7 = {k: tuple(Fr(x).limit_denominator(1000) for x in v) for k, v in zip('ABCDEF', (M10.A7, M10.B7, M10.C7, M10.D7, M10.E7, M10.F7))}
-sol_pts7 = build7(c7, d7)
 eq('算10-7 図の座標（A〜F）が、解の配置と同じ', [fig7[k] for k in 'ABCDEF'], list(sol_pts7[:6]))
 eq('算10-7 角Aは直角（辺ABとACが垂直）', (fig7['B'][0] - fig7['A'][0]) * (fig7['C'][0] - fig7['A'][0]) + (fig7['B'][1] - fig7['A'][1]) * (fig7['C'][1] - fig7['A'][1]), 0)
 eq('算10-7 EはBC上にある（B・E・Cが一直線）', tri_area(fig7['B'], fig7['E'], fig7['C']), 0)
@@ -351,10 +357,10 @@ odds8 = iter(range(1, 10 ** 6, 2))
 rows8 = [[next(odds8) for _ in range(n)] for n in range(1, 41)]
 tab8 = [[int(x) for x in r[1:]] for r in s8['table']['rows'][:5]]
 eq('算10-8 表の1〜5段目が、実際に並べたものと同じ', tab8, rows8[:5])
-eq('算10-8(1) 6段目の左から4番目', a_(8, 1), rows8[int(grab(r'(\d+)段目の、左から', q_text(M10, 8, 1))) - 1][int(grab(r'から(\d+)番目', q_text(M10, 8, 1))) - 1])
+eq('算10-8(1) 8段目の右はし', a_(8, 1), rows8[int(grab(r'(\d+)段目の、右はし', q_text(M10, 8, 1))) - 1][-1])
 x8 = int(grab(r'^(\d+)は', q_text(M10, 8, 2)))
-where8 = [(i + 1, j + 1) for i, r in enumerate(rows8) for j, v in enumerate(r) if v == x8]
-eq('算10-8(2) 101の位置（段・左から）', a_(8, 2), list(map(Fr, where8[0])))
+where8 = [(i + 1, len(r) - j) for i, r in enumerate(rows8) for j, v in enumerate(r) if v == x8]               # (段, 右から何番目)
+eq('算10-8(2) 299の位置（段・右から）', a_(8, 2), list(map(Fr, where8[0])))
 sums8 = [int(x) for x in re.findall(r'(\d+)、', q_text(M10, 8, 3))[:4]]
 eq('算10-8(3) 問題文の、1〜4段目の和', sums8, [sum(r) for r in rows8[:4]])
 eq('算10-8(3) 10段目の和', a_(8, 3), sum(rows8[int(grab(r'(\d+)段目の数の和', q_text(M10, 8, 3))) - 1]))
@@ -364,20 +370,27 @@ eq('算10-8(4) 和が3375になる段は、1つだけ', len(r8), 1)
 eq('算10-8(4) その段と、左はしの数', a_(8, 4), [Fr(r8[0]), Fr(rows8[r8[0] - 1][0])])
 
 # =====================================================================================
-# 第09セット 正方形を重ねた図形
+# 第09セット 正方形をジグザグに重ねた図形
 # =====================================================================================
 s9 = SETS[8]
 side9 = int(grab(r'1辺が(\d+)cm', lead_of(9)))
-dx9, dy9 = int(grab(r'右へ(\d+)cm', lead_of(9))), int(grab(r'上へ(\d+)cm', lead_of(9)))
+dx9 = int(grab(r'右へ(\d+)cm', lead_of(9)))
+dy9 = int(grab(r'上へ(\d+)cm', lead_of(9)))
+dy9b = int(grab(r'下へ(\d+)cm', lead_of(9)))
+eq('算10-9 上へのずれと、下へのずれが同じ', dy9, dy9b)
+
+
+def squares9(n):
+    """k枚目（0から）の正方形のマス。右へ dx9 ずつ、上と下へ dy9 を、かわるがわるずらす。"""
+    out = []
+    for k in range(n):
+        y0 = dy9 if k % 2 == 1 else 0
+        out.append({(k * dx9 + i, y0 + j) for i in range(side9) for j in range(side9)})
+    return out
 
 
 def cells9(n):
-    out = set()
-    for k in range(n):
-        for i in range(side9):
-            for j in range(side9):
-                out.add((k * dx9 + i, k * dy9 + j))
-    return out
+    return set().union(*squares9(n))
 
 
 def edges9(cs):
@@ -399,66 +412,106 @@ def corners9(cs):
     return pts
 
 
+def holes9(cs):
+    """図形の中に、あながないか（外からつながっていない空白がないか）。外の空白から、ひろげて、たどり着けるか。"""
+    x0, x1, y0, y1 = -1, max(c[0] for c in cs) + 2, -1, max(c[1] for c in cs) + 2
+    outside, stack = set(), [(x0, y0)]
+    while stack:
+        p = stack.pop()
+        if p in outside or p in cs or not (x0 <= p[0] <= x1 and y0 <= p[1] <= y1):
+            continue
+        outside.add(p)
+        stack += [(p[0] + 1, p[1]), (p[0] - 1, p[1]), (p[0], p[1] + 1), (p[0], p[1] - 1)]
+    return [(x, y) for x in range(x0, x1 + 1) for y in range(y0, y1 + 1) if (x, y) not in cs and (x, y) not in outside]
+
+
 per9 = {n: edges9(cells9(n)) for n in range(1, 41)}
 area9 = {n: len(cells9(n)) for n in range(1, 41)}
 vert9 = {n: len(corners9(cells9(n))) for n in range(1, 41)}
+eq('算10-9 どの枚数でも、図形に、あなはない（周がひとつながり）', [n for n in range(1, 41) if holes9(cells9(n))], [])
+eq('算10-9 周は10n＋6、面積は14n＋2（実際に数えた値が、1次式になる）', [(per9[n] - per9[1]) // (n - 1) for n in range(2, 41)] + [(area9[n] - area9[1]) / (n - 1) for n in range(2, 41)], [10] * 39 + [14] * 39)
 
 
 def overlaps9(n):
-    """となり合う2枚どうし（k番目と(k+1)番目）、すべての組について、重なる面積の合計。ほかの組が重ならないことも確かめる。"""
-    sq = [{(k * dx9 + i, k * dy9 + j) for i in range(side9) for j in range(side9)} for k in range(n)]
+    """となり合う2枚どうしの重なる面積の合計。ほかの組（1枚おいた正方形どうしなど）が重ならないことも確かめる。"""
+    sq = squares9(n)
     far = sum(len(sq[a] & sq[b]) for a in range(n) for b in range(a + 2, n))
     near = sum(len(sq[a] & sq[a + 1]) for a in range(n - 1))
     return near, far
 
 
 eq('算10-9 図2の多角形の頂点が、3枚を重ねた図形のまがり角と同じ', {tuple(p) for p in M10.U9}, corners9(cells9(3)))
-eq('算10-9 図2の周の長さ（3枚）が、表の28cmと同じ', per9[3], int(s9['table']['rows'][1][3]))
-tab9 = s9['table']['rows']
-eq('算10-9 表の1・2・3枚の周の長さ', [int(x) for x in tab9[1][1:4]], [per9[1], per9[2], per9[3]])
-eq('算10-9 表の枚数の行', [int(x) for x in tab9[0][1:5]] + [int(tab9[0][6])], [1, 2, 3, 4, 12])
-eq('算10-9(1) ア・イ（4枚・12枚の周）', a_(9, 1), [per9[4], per9[12]])
-eq('算10-9(1) 表のア・イの枚数が、問題の4枚・12枚', (int(tab9[0][4]), int(tab9[0][6])), (4, 12))
-p9 = int(grab(r'周の長さが(\d+)cm', q_text(M10, 9, 2)))
-eq('算10-9(2) 周が100cmになる枚数', a_(9, 2), [n for n in per9 if per9[n] == p9][0])
-eq('算10-9(2) 枚数は、1つだけ', [n for n in per9 if per9[n] == p9].__len__(), 1)
-ar9 = int(grab(r'面積が(\d+)cm²', q_text(M10, 9, 3)))
-eq('算10-9(3) 面積が186cm²になる枚数', a_(9, 3), [n for n in area9 if area9[n] == ar9][0])
-eq('算10-9(3) 枚数は、1つだけ', len([n for n in area9 if area9[n] == ar9]), 1)
-eq('算10-9(3) となり合う2枚以外は、重ならない（面積の式が成り立つ）', [overlaps9(n)[1] for n in range(2, 12)], [0] * 10)
-eq('算10-9(3) 重なる部分の面積の合計＝(枚数－1)×((たて)×(横))', [overlaps9(n)[0] for n in range(1, 8)], [(n - 1) * (side9 - dx9) * (side9 - dy9) for n in range(1, 8)])
-cand9 = {'ア': per9, 'イ': area9, 'ウ': vert9,
-         'エ': {n: overlaps9(n)[0] for n in range(1, 21)}, 'オ': {n: side9 * side9 * n for n in range(1, 41)}}
-prop9 = [k for k, f in cand9.items() if len({Fr(f[n], n) for n in range(1, 21)}) == 1]
-eq('算10-9(4) 枚数に比例するもの（f(n)÷n が一定）', ans(M10, 9, 4), '・'.join(prop9))
+eq('算10-9 図2の多角形の周が、3枚の周と同じ', sum(abs(M10.U9[i][0] - M10.U9[i - 1][0]) + abs(M10.U9[i][1] - M10.U9[i - 1][1]) for i in range(len(M10.U9))), per9[3])
+eq('算10-9(1) 5枚の周', a_(9, 1), per9[int(grab(r'(\d+)枚重ねてできる図形の周', q_text(M10, 9, 1)))])
+p9 = int(grab(r'周の長さが(\d+)cmになるのは', q_text(M10, 9, 2)))
+eq('算10-9(2) 周が156cmになる枚数', a_(9, 2), [n for n in per9 if per9[n] == p9][0])
+eq('算10-9(2) 枚数は、1つだけ', len([n for n in per9 if per9[n] == p9]), 1)
+eq('算10-9(3) 12枚の面積', a_(9, 3), area9[int(grab(r'(\d+)枚重ねてできる図形の面積', q_text(M10, 9, 3)))])
+p94 = int(grab(r'周の長さが(\d+)cmになるとき', q_text(M10, 9, 4)))
+n94 = [n for n in per9 if per9[n] == p94]
+eq('算10-9(4) 周が106cmになるときの枚数は、1つだけ', len(n94), 1)
+eq('算10-9(4) そのときの面積', a_(9, 4), area9[n94[0]])
+eq('算10-9 となり合う2枚以外は、重ならない（面積の式が成り立つ）', [overlaps9(n)[1] for n in range(2, 14)], [0] * 12)
+eq('算10-9 重なる部分の面積の合計＝(枚数－1)×((たて)×(横))', [overlaps9(n)[0] for n in range(1, 10)], [(n - 1) * (side9 - dx9) * (side9 - dy9) for n in range(1, 10)])
 
 # =====================================================================================
-# 第10セット 流水算
+# 第10セット 流水算（エンジンが止まった船）
 # =====================================================================================
 s10 = SETS[9]
 f10 = s10['fig']['args']
 pts10 = [(Fr(a), Fr(b)) for a, b in f10['pts']]
-D10 = int(grab(r'道のりは(\d+)km', lead_of(10)))
-rest10 = int(grab(r'(\d+)分休んで', lead_of(10)))
-eq('算10-10 グラフの点と問題文（道のり・休んだ時間）', (pts10[1][1], pts10[2][0] - pts10[1][0]), (D10, rest10))
-down10 = pts10[1][1] / (pts10[1][0] / 60)                 # 時速（下り）
-up10 = pts10[3][0] - pts10[2][0]
-up10 = pts10[2][1] / (up10 / 60)                         # 時速（上り）
-cur10, still10 = [(c, w) for w in range(1, 100) for c in range(0, w) if w + c == down10 and w - c == up10][0]
-eq('算10-10(1) 川の流れの速さ（下りと上りの2つの式を、1つずつためして解く）', a_(10, 1), cur10)
-eq('算10-10(2) 静水時の船の速さ', a_(10, 2), still10)
-g10 = lambda t: interp(pts10, Fr(t))
-leaf10 = lambda t: cur10 * Fr(t) / 60                    # 木の葉の、A港からの道のり（km）。時刻 t は分
-diffs10 = [(Fr(t), g10(t) - leaf10(t)) for t in range(0, 91)]
-roots10 = []
-for (ta, da), (tb, db) in zip(diffs10, diffs10[1:]):
-    if da > 0 >= db and ta >= pts10[2][0]:
-        roots10.append(ta + (tb - ta) * da / (da - db))   # 1分間は1次式（折れ点はすべて整数の分）
-eq('算10-10(3) 船が木の葉と出会う時刻（帰りの途中）', a_(10, 3), roots10[0])
-eq('算10-10(3) 出会うのは、帰りの1回だけ', len(roots10), 1)
-eq('算10-10 往きは木の葉をおいこして、離れる一方（出発直後以外、船が先）', all(g10(t) > leaf10(t) for t in range(1, 31)), True)
-eq('算10-10(4) 出会う場所のA港からの道のり', a_(10, 4), leaf10(roots10[0]))
-eq('算10-10(4) 船の位置と同じ', leaf10(roots10[0]), g10(roots10[0]))
+
+
+def simulate10(still, cur, Dq, t_stop, t_fix, dt=Fr(1, 60)):
+    """1/60分ごとに、船を動かす。時速（km/時）を、分あたりに直して、道のりをたしていく。Q港（道のり Dq）に着いたら、向きをかえる。"""
+    x, t, up = Fr(0), Fr(0), True
+    track = {Fr(0): Fr(0)}
+    while x >= 0 and t < 400:
+        if up:
+            v = (still - cur) if not (t_stop <= t < t_fix) else -cur
+        else:
+            v = -(still + cur)                                        # 下り：P港の向き（道のりがへる）
+        x += v * dt / 60
+        t += dt
+        if up and x >= Dq:
+            up = False
+            x = Dq
+        if not up and x <= 0:
+            x = Fr(0)
+            track[t] = x
+            break
+        track[t] = x
+    return track
+
+
+# グラフの点から決まること：30分後と60分後の道のりの差（流された道のり）、はじめの30分に上った道のり
+t_stop10, t_fix10 = pts10[1][0], pts10[2][0]
+up_dist10 = pts10[1][1]
+drift10 = pts10[1][1] - pts10[2][1]
+cur10 = drift10 / ((t_fix10 - t_stop10) / 60)                           # 流された道のり ÷ 流された時間（時間）
+up10 = up_dist10 / (t_stop10 / 60)                                       # 上りの速さ
+still10 = up10 + cur10
+Dq10 = pts10[3][1]
+trk10 = simulate10(still10, cur10, Dq10, t_stop10, t_fix10)
+at10 = lambda m: trk10[Fr(m)]
+eq('算10-10 グラフの点（30・60・90・125分後）が、船を動かしたようすと合う', [at10(m) for m in (30, 60, 90)], [pts10[1][1], pts10[2][1], pts10[3][1]])
+end10 = max(t for t, x in trk10.items() if x > 0) + Fr(1, 60)
+eq('算10-10 グラフの終点（P港にもどる時こく）', (end10, trk10[end10]), (pts10[4][0], 0))
+eq('算10-10(1) 川の流れの速さ', a_(10, 1), cur10)
+eq('算10-10(1) 流された時間（30分後〜60分後）は、グラフの目もりと同じ', [x for x, _ in f10['xticks'][:2]], [30, 60])
+# 速さの組を、1つずつためして、グラフの2点（30分後8km・60分後6km）と合うものをさがす（時速の整数）
+fit10 = [(w, c) for w in range(1, 61) for c in range(0, w)
+         if Fr(w - c) * Fr(t_stop10, 60) == up_dist10 and up_dist10 - Fr(c) * Fr(t_fix10 - t_stop10, 60) == pts10[2][1]]
+eq('算10-10(2) 静水時の速さ（流れの速さ・静水時の速さの組は、1つだけ）', (a_(10, 2), len(fit10)), (fit10[0][0], 1))
+eq('算10-10(2) その組の流れの速さ', fit10[0][1], cur10)
+eq('算10-10(3) ア・イ（Q港までの道のり・P港にもどる時こく）', a_(10, 3), [Dq10, end10])
+no_fail10 = Dq10 / (still10 - cur10) * 60                                # エンジンが止まらなければ、Q港に着く時刻（分）
+late10 = pts10[3][0] - no_fail10
+m10, s10_ = divmod(late10 * 60, 60)
+eq('算10-10(4) 止まらなければ、何分何秒早いか', ans(M10, 10, 4), f'{int(m10)}分{int(s10_)}秒')
+eq('算10-10(4) 秒が整数', (late10 * 60).denominator, 1)
+eq('算10-10 図の目もり：アの位置がQ港の道のり、イの位置が終点の時刻', ([(v, l) for v, l in f10['yticks'] if l == 'ア'], [(v, l) for v, l in f10['xticks'] if l == 'イ']), ([(Dq10, 'ア')], [(end10, 'イ')]))
+eq('算10-10 グラフの点が、図の点線の折れ点と同じ', [tuple(Fr(x) for x in g) for g in f10['guides']], [pts10[1], pts10[2], pts10[3]])
 
 # =====================================================================================
 # 図の目もり・ラベルと、問題文・データの数値が合うか
@@ -468,11 +521,10 @@ eq('算10-2 3つのグラフは、どれも、0秒後が12cm・12秒後までの
 eq('算10-3 グラフの目もり（x：2〜20、y：300〜2400）', (f3['xticks'][0][0], f3['xticks'][-1][0], f3['yticks'][0][0], f3['yticks'][-1][0], f3['xmax'], f3['ymax']), (2, 20, 300, 2400, 20, 2400))
 eq('算10-4 グラフの目もり・点線が、グラフの折れ点（時間・高さ）と同じ', ([t for t, _ in f4['xticks']], [h for _, h in f4['guides']], [(t, h) for t, h in f4['guides']]), ([int(p[0]) for p in pts4[1:-1]], [int(p[1]) for p in pts4[1:-1]], [(int(p[0]), int(p[1])) for p in pts4[1:-1]]))
 eq('算10-4 縦軸の目もりが、10cmごと（ブロックの1段ごと）', [u for u, _ in f4['yticks']], [10, 20, 30, 40])
-eq('算10-10 グラフの目もりが、折れ点と同じ（30・45・90分、B港12km）', ([t for t, _ in f10['xticks']], [u for u, _ in f10['yticks']]), ([30, 45, 90], [12]))
 texts7 = [pr[2] for pr in s7['fig']['args']['panels'][0]['prims'] if pr[0] == 'text']
 eq('算10-7 図の書き込み（10cm・DF＝6cm）が、問題文の数値と同じ', sorted(texts7), sorted([f'{AB7}cm', f'DF＝{DF7}cm']))
 texts9 = sorted(pr[2] for pn in s9['fig']['args']['panels'] for pr in pn['prims'] if pr[0] == 'text')
-eq('算10-9 図1の書き込み（4cm・1cm・2cm）が、問題文の数値と同じ', texts9, sorted([f'{side9}cm', f'{dx9}cm', f'{dy9}cm']))
+eq('算10-9 図1の書き込み（4cm・3cm・2cm）が、問題文の数値と同じ', texts9, sorted([f'{side9}cm', f'{dx9}cm', f'{dy9}cm']))
 
 # =====================================================================================
 # 体裁：全小問の、答えと解説
