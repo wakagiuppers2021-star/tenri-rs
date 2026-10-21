@@ -190,7 +190,7 @@ def register(B):
             draw_graph(c, gx, gy, gwid, ghgt, 12, L, [dict(pts=[tuple(pt) for pt in pts])],
                        xticks=[(3, '3'), (6, '6'), (9, '9'), (12, '12')], yticks=[(4, '4'), (8, '8'), (12, '12')],
                        xgrid=[3, 6, 9, 12], ygrid=[4, 8, 12], minor_x=[1, 2, 4, 5, 7, 8, 10, 11], size=7.5,
-                       xlab='時間(秒)', ylab='距離(cm)', ylab_dx=-6)
+                       xlab='時間(秒)', ylab='きょり(cm)', ylab_dx=-6)
 
     # ---------- 第04セット：水そうとブロックの見取図＋グラフ ----------
     def oblique_box(c, x, y, wf, hf, ox, oy):
