@@ -1653,9 +1653,12 @@ def fig_letters(c, x, top, w, h, s='BHKNSTXZ'):
 def fig_areas(c, x, top, w, h, specs=()):
     """斜線部分の面積の図を、(1)(2)(3)とならべる。specs は (種類, 数値のdict)。"""
     n = len(specs)
-    pw = w / n
+    wts = [a.get('wt', 1) for _, a in specs]                 # 図ごとの幅の重み（ふつうは同じ幅）
+    cum = 0
     for k, (kind, a) in enumerate(specs):
-        px = x + k * pw
+        pw = w * wts[k] / sum(wts)
+        px = x + w * cum / sum(wts)
+        cum += wts[k]
         text(c, px + 4, top - 11, f'({k + 1})', 10, bold=True)
         if kind == 'trap':                                   # 長方形の中の、四角形（上の左はしを切りとる）
             W, H, cut = a['w'], a['h'], a['cut']
@@ -1697,6 +1700,193 @@ def fig_areas(c, x, top, w, h, specs=()):
             c.arc(ox, oy - d / 2 * sc, ox + d * sc, oy + d / 2 * sc, 0, 180)
             c.line(ox, oy, ox + d * sc, oy)
             text(c, ox + d * sc / 2, oy - 12, f'{d:g}cm', 9, center=True)
+        else:
+            AREA_KINDS[kind](c, px, pw, top, h, a)
+
+
+def _obl(ox, oy, sc, kx=.42, ky=.3):
+    """見取図（斜投影）。(x=右, y=おくゆき, z=上) を、紙の上の点にうつす関数を返す。"""
+    return lambda x, y, z: (ox + (x + kx * y) * sc, oy + (z + ky * y) * sc)
+
+
+def _faces(c, P, faces):
+    """見える面を、(頂点の列, 色) で、順にぬる。"""
+    setline(c, 1.1)
+    for pts, col in faces:
+        c.setFillColor(col)
+        c.drawPath(_poly(c, [P(*q) for q in pts]), stroke=1, fill=1)
+
+
+SHADE = colors.HexColor('#DCE2E6')
+
+
+def _ar_trisect(c, px, pw, top, h, a):                       # 正方形の各辺を3等分する点のうち4点を結んだ長方形
+    s_ = a['s']
+    sc = min((pw - 40) / s_, (h - 46) / s_)
+    ox, oy = px + (pw - s_ * sc) / 2, top - 24 - s_ * sc
+    t = s_ / 3
+    pts = [(0, 2 * t), (t, s_), (s_, t), (2 * t, 0)]
+    poly = [(ox + u * sc, oy + v * sc) for u, v in pts]
+    _hatch(c, _poly(c, poly), ox, oy, ox + s_ * sc, oy + s_ * sc)
+    setline(c, 1.1)
+    c.rect(ox, oy, s_ * sc, s_ * sc, stroke=1, fill=0)
+    c.drawPath(_poly(c, poly), stroke=1, fill=0)
+    c.setFillColor(INK)
+    for u in (t, 2 * t):                                     # 3等分する点
+        for q in ((u, 0), (u, s_), (0, u), (s_, u)):
+            c.circle(ox + q[0] * sc, oy + q[1] * sc, 1.6, stroke=0, fill=1)
+    text(c, ox + s_ * sc / 2, oy - 12, f'{s_:g}cm', 9, center=True)
+
+
+def _ar_twosemi(c, px, pw, top, h, a):                       # 正方形の2辺を直径とする、半円2つの重なり
+    s_ = a['s']
+    sc = min((pw - 40) / s_, (h - 46) / s_)
+    ox, oy = px + (pw - s_ * sc) / 2, top - 24 - s_ * sc
+    r = s_ / 2 * sc
+    c.saveState()
+    p1 = c.beginPath()
+    p1.circle(ox, oy + r, r)
+    c.clipPath(p1, stroke=0, fill=0)
+    p2 = c.beginPath()
+    p2.circle(ox + r, oy, r)
+    _hatch(c, p2, ox, oy, ox + s_ * sc, oy + s_ * sc)
+    c.restoreState()
+    setline(c, 1.1)
+    c.rect(ox, oy, s_ * sc, s_ * sc, stroke=1, fill=0)
+    c.arc(ox - r, oy, ox + r, oy + 2 * r, -90, 180)          # 左の辺が直径（右がわの半円）
+    c.arc(ox, oy - r, ox + 2 * r, oy + r, 0, 180)            # 下の辺が直径（上がわの半円）
+    text(c, ox + s_ * sc / 2, oy - 12, f'{s_:g}cm', 9, center=True)
+
+
+def _centroid(inside, x0, x1, y0, y1, n=120):
+    """領域の重心（見つからない、または、領域の外のときは、領域の中でいちばん近い点）。"""
+    pts = [(x0 + (i + .5) * (x1 - x0) / n, y0 + (j + .5) * (y1 - y0) / n) for i in range(n) for j in range(n)]
+    pts = [q for q in pts if inside(*q)]
+    gx, gy = sum(q[0] for q in pts) / len(pts), sum(q[1] for q in pts) / len(pts)
+    return min(pts, key=lambda q: (q[0] - gx) ** 2 + (q[1] - gy) ** 2)
+
+
+def _ar_semitri(c, px, pw, top, h, a):                       # 直径BCの半円と、直角三角形ABC（Bが直角）の重なり
+    d = a['d']
+    ab = 3.14 * d / 4
+    sc = min((pw - 44) / d, (h - 58) / ab)
+    ox, oy = px + (pw - d * sc) / 2, top - 30 - ab * sc
+    semi = c.beginPath()
+    semi.moveTo(ox + d * sc, oy)
+    semi.arcTo(ox, oy - d / 2 * sc, ox + d * sc, oy + d / 2 * sc, 0, 180)
+    semi.close()
+    c.setFillColor(colors.white)
+    setline(c, 1.1)
+    c.drawPath(_poly(c, [(ox, oy), (ox + d * sc, oy), (ox, oy + ab * sc)]), stroke=1, fill=0)
+    c.arc(ox, oy - d / 2 * sc, ox + d * sc, oy + d / 2 * sc, 0, 180)
+    c.line(ox, oy, ox + d * sc, oy)
+    in_semi = lambda u, v: v >= 0 and (u - d / 2) ** 2 + v ** 2 <= (d / 2) ** 2
+    in_tri = lambda u, v: u >= 0 and v >= 0 and v <= ab * (1 - u / d)
+    for lab, f in (('ア', lambda u, v: in_semi(u, v) and not in_tri(u, v)), ('イ', lambda u, v: in_tri(u, v) and not in_semi(u, v))):
+        gx, gy = _centroid(f, 0, d, 0, ab)
+        text(c, ox + gx * sc, oy + gy * sc - 3.5, lab, 10, bold=True, center=True)
+    text(c, ox - 9, oy - 3, 'B', 9.5, bold=True, center=True)
+    text(c, ox + d * sc + 9, oy - 3, 'C', 9.5, bold=True, center=True)
+    text(c, ox - 9, oy + ab * sc - 3, 'A', 9.5, bold=True, center=True)
+    text(c, ox + d * sc / 2, oy - 14, f'{d:g}cm', 9, center=True)
+
+
+def _ar_trap3(c, px, pw, top, h, a):                         # 台形ABCDを、BEとEFで3つの部分に分ける
+    ad, bc, ae = a['ad'], a['bc'], a['ae']
+    hh = a.get('hh', 8)
+    sc = min((pw - 40) / bc, (h - 58) / hh)
+    ox, oy = px + (pw - bc * sc) / 2, top - 30 - hh * sc
+    A, D = ((bc - ad) / 2, hh), ((bc - ad) / 2 + ad, hh)
+    B, C, E, F = (0, 0), (bc, 0), ((bc - ad) / 2 + ae, hh), (ae, 0)
+    P = lambda q: (ox + q[0] * sc, oy + q[1] * sc)
+    setline(c, 1.1)
+    c.setFillColor(colors.white)
+    c.drawPath(_poly(c, [P(B), P(C), P(D), P(A)]), stroke=1, fill=0)
+    c.line(*P(B), *P(E))
+    c.line(*P(E), *P(F))
+    for lab, region in (('ア', [A, B, E]), ('イ', [B, E, F]), ('ウ', [E, F, C, D])):
+        gx, gy = sum(q[0] for q in region) / len(region), sum(q[1] for q in region) / len(region)
+        text(c, ox + gx * sc, oy + gy * sc - 3.5, lab, 10, bold=True, center=True)
+    for lab, q, dx, dy in (('A', A, -8, 5), ('D', D, 8, 5), ('B', B, -8, -9), ('C', C, 8, -9), ('E', E, 0, 6), ('F', F, 0, -11)):
+        text(c, P(q)[0] + dx, P(q)[1] + dy, lab, 9.5, bold=True, center=True)
+    text(c, ox + bc * sc / 2, oy - 22, f'BC {bc:g}cm　AD {ad:g}cm', 8.5, center=True)
+
+
+def _ar_views(c, px, pw, top, h, a):                         # 円柱を、真正面と真上から見た図
+    Wd, H = a['w'], a['h']
+    sc = min((pw - 22) / (2 * Wd + 3), (h - 56) / H)
+    x0 = px + (pw - (2 * Wd + 3) * sc) / 2
+    oy = top - 24 - H * sc
+    setline(c, 1.1)
+    c.rect(x0, oy, Wd * sc, H * sc, stroke=1, fill=0)
+    text(c, x0 + Wd * sc / 2, oy - 11, f'{Wd:g}cm', 9, center=True)
+    text(c, x0 + Wd * sc + 4, oy + H * sc / 2 - 3, f'{H:g}cm', 9)
+    cx, cy = x0 + (Wd + 3) * sc + Wd * sc / 2, oy + H * sc / 2
+    c.circle(cx, cy, Wd * sc / 2, stroke=1, fill=0)
+    setline(c, .7, INK, (3, 2))
+    c.line(cx - Wd * sc / 2, cy, cx + Wd * sc / 2, cy)
+    text(c, cx, cy + 3, f'{Wd:g}cm', 9, center=True)
+    text(c, x0 + Wd * sc / 2, oy - 23, '真正面から見た図', 8, center=True)
+    text(c, cx, oy - 23, '真上から見た図', 8, center=True)
+
+
+def _ar_notchbox(c, px, pw, top, h, a):                      # 直方体の、右手前の上のかどから、立方体を切りとった立体
+    L, Wd, H, n = a['l'], a['w'], a['h'], a['n']
+    kx, ky = .42, .3
+    sc = min((pw - 46) / (L + kx * Wd), (h - 50) / (H + ky * Wd))
+    ox = px + 24 + (pw - 46 - (L + kx * Wd) * sc) / 2
+    oy = top - 24 - (H + ky * Wd) * sc
+    P = _obl(ox, oy, sc, kx, ky)
+    _faces(c, P, [
+        ([(0, 0, 0), (L, 0, 0), (L, 0, H - n), (L - n, 0, H - n), (L - n, 0, H), (0, 0, H)], colors.white),
+        ([(0, 0, H), (L - n, 0, H), (L - n, n, H), (L, n, H), (L, Wd, H), (0, Wd, H)], colors.white),
+        ([(L, 0, 0), (L, Wd, 0), (L, Wd, H), (L, n, H), (L, n, H - n), (L, 0, H - n)], SHADE),
+        ([(L - n, 0, H - n), (L, 0, H - n), (L, n, H - n), (L - n, n, H - n)], colors.white),
+        ([(L - n, n, H - n), (L, n, H - n), (L, n, H), (L - n, n, H)], PALE),
+        ([(L - n, 0, H - n), (L - n, n, H - n), (L - n, n, H), (L - n, 0, H)], PALE)])
+    text(c, P(L / 2, 0, 0)[0], P(0, 0, 0)[1] - 12, f'{L:g}cm', 9, center=True)
+    text(c, P(L, Wd / 2, 0)[0] + 5, P(L, Wd / 2, 0)[1] - 8, f'{Wd:g}cm', 9)
+    text(c, P(0, 0, H / 2)[0] - 15, P(0, 0, H / 2)[1] - 3, f'{H:g}cm', 9, center=True)
+    text(c, P(L - n, 0, H - n / 2)[0] - 14, P(L - n, 0, H - n / 2)[1] - 3, f'{n:g}cm', 8.5, center=True)
+
+
+def _ar_house(c, px, pw, top, h, a):                         # 家の形（五角形）の柱
+    Wd, wall, roof, ln = a['w'], a['wall'], a['roof'], a['len']
+    kx, ky = .42, .3
+    sc = min((pw - 46) / (Wd + kx * ln), (h - 50) / (wall + roof + ky * ln))
+    ox = px + 24 + (pw - 46 - (Wd + kx * ln) * sc) / 2
+    oy = top - 24 - (wall + roof + ky * ln) * sc
+    P = _obl(ox, oy, sc, kx, ky)
+    _faces(c, P, [
+        ([(Wd / 2, 0, wall + roof), (Wd, 0, wall), (Wd, ln, wall), (Wd / 2, ln, wall + roof)], PALE),
+        ([(Wd, 0, 0), (Wd, ln, 0), (Wd, ln, wall), (Wd, 0, wall)], SHADE),
+        ([(0, 0, 0), (Wd, 0, 0), (Wd, 0, wall), (Wd / 2, 0, wall + roof), (0, 0, wall)], colors.white)])
+    setline(c, .7, INK, (3, 2))
+    c.line(*P(Wd / 2, 0, wall + roof), *P(Wd / 2, 0, wall))
+    c.line(*P(0, 0, wall), *P(Wd, 0, wall))
+    text(c, P(Wd / 2, 0, 0)[0], P(0, 0, 0)[1] - 12, f'{Wd:g}cm', 9, center=True)
+    text(c, P(Wd, ln / 2, 0)[0] + 5, P(Wd, ln / 2, 0)[1] - 8, f'{ln:g}cm', 9)
+    text(c, P(0, 0, wall / 2)[0] - 15, P(0, 0, wall / 2)[1] - 3, f'{wall:g}cm', 9, center=True)
+    text(c, P(Wd / 2, 0, wall + roof * .3)[0] - 12, P(Wd / 2, 0, wall + roof * .3)[1] - 3, f'{roof:g}cm', 9, center=True)
+
+
+def _ar_sector(c, px, pw, top, h, a):                        # 円柱を4等分した立体を、真上から見た図（おうぎ形）
+    r = a['r']
+    sc = min((pw - 40) / r, (h - 62) / r)
+    ox, oy = px + (pw - r * sc) / 2, top - 26 - r * sc
+    sec = _quarter(c, ox, oy, r * sc, 0)
+    c.setFillColor(colors.white)
+    setline(c, 1.1)
+    c.drawPath(sec, stroke=1, fill=0)
+    if a.get('chord'):
+        setline(c, .8, INK, (3, 2))
+        c.line(ox + r * sc, oy, ox, oy + r * sc)
+    text(c, ox + r * sc / 2, oy - 12, f'{r:g}cm', 9, center=True)
+    text(c, ox + r * sc / 2, oy - 24, f'（真上から見た図　高さ{a["hh"]:g}cm）', 8, center=True)
+
+
+AREA_KINDS = {'trisect': _ar_trisect, 'twosemi': _ar_twosemi, 'semitri': _ar_semitri, 'trap3': _ar_trap3,
+              'views': _ar_views, 'notchbox': _ar_notchbox, 'house': _ar_house, 'sector': _ar_sector}
 
 
 def fig_matchsticks(c, x, top, w, h, counts=(1, 2, 3)):

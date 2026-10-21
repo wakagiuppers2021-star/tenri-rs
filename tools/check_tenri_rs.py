@@ -1805,62 +1805,86 @@ eq('算4-6(2) 途中でかえる', ans(M4, 6, 2), f'{int(t62)}分{int((t62 - int
 a5 = int(re.search(r'(\d+)分後から', q_text(M4, 6, 3)).group(1))
 eq('算4-6(3) 5分後からB管も', ans(M4, 6, 3), f'{a5 + (1 - a5 * rA) / (rA + rB):g}分後')
 
-# 7 割合：原価・利益・値引き
-cost = int(re.search(r'(\d+)円の品物', M4.SETS[6]['lead']).group(1))
-rate = int(re.search(r'(\d)割の利益', M4.SETS[6]['lead']).group(1)) / 10
-price = round(cost * (1 + rate))
-eq('算4-7(1) 定価', ans(M4, 7, 1), f'{price}円')
-disc = int(re.search(r'(\d)割引き', q_text(M4, 7, 2)).group(1)) / 10
-sell = round(price * (1 - disc))
-eq('算4-7(2) 売り値', ans(M4, 7, 2), f'{sell}円')
-eq('算4-7(3) 利益', ans(M4, 7, 3), f'{sell - cost}円')
-sell4 = int(re.search(r'(\d+)円にする', q_text(M4, 7, 4)).group(1))
-eq('算4-7(4) 何%引き', ans(M4, 7, 4), f'{(price - sell4) / price * 100:g}%')
+# 7 比：所持金の比。数は問題文から読み取り、整数の範囲をしらみつぶしに調べる
+ane47, imo47 = [int(x) for x in re.findall(r'(\d+)円', M4.SETS[6]['lead'])]
+ratio47 = lambda a_, b_: f'{a_ // math.gcd(a_, b_)}：{b_ // math.gcd(a_, b_)}'
+eq('算4-7(1) 姉：妹', ans(M4, 7, 1), ratio47(ane47, imo47))
+give47 = int(re.search(r'(\d+)円を妹', q_text(M4, 7, 2)).group(1))
+eq('算4-7(2) わたしたあとの比', ans(M4, 7, 2), ratio47(ane47 - give47, imo47 + give47))
+mult47 = int(re.search(r'妹の(\d)倍', q_text(M4, 7, 3)).group(1))
+sol473 = [x_ for x_ in range(0, imo47 + 1) if ane47 - mult47 * x_ == imo47 - x_]               # 妹がx円、姉がmult倍を出して、残りが等しい
+assert len(sol473) == 1
+eq('算4-7(3) プレゼントの代金', ans(M4, 7, 3), f'{(1 + mult47) * sol473[0]}円')
+r1_, r2_ = [int(x) for x in re.search(r'比は(\d)：(\d)になりました', q_text(M4, 7, 4)).groups()]
+sol474 = [x_ for x_ in range(0, imo47) if (ane47 - x_) * r2_ == (imo47 - x_) * r1_]            # 同じ金額x円を使ったあとの残りの比
+assert len(sol474) == 1
+eq('算4-7(4) おかしの代金', ans(M4, 7, 4), f'{sol474[0]}円')
 
-# 8 平均・中央値・最頻値
-import statistics
-data8 = [int(x) for x in re.findall(r'\d+', M4.SETS[7]['lead'].split('\n')[1])]
-assert len(data8) == 10
-eq('算4-8(1) 平均', ans(M4, 8, 1), f'{statistics.mean(data8):g}m')
-eq('算4-8(2) 最頻値', ans(M4, 8, 2), f'{statistics.mode(data8):g}m')
-eq('算4-8(3) 中央値', ans(M4, 8, 3), f'{statistics.median(data8):g}m')
-a8 = (statistics.mean(data8) + 1) * 11 - sum(data8)
-eq('算4-8(4) Aさんの記録', ans(M4, 8, 4), f'{a8:g}m')
-eq('算4-8(5) 11人の中央値', ans(M4, 8, 5), f'{statistics.median(data8 + [a8]):g}m')
+# 8 斜線部分の面積（正方形・半円）
+sp8 = {k: v for k, v in M4.SETS[7]['fig']['args']['specs']}
+s81 = sp8['trisect']['s']
+t81 = s81 / 3
+rect81 = [(0, 2 * t81), (t81, s81), (s81, t81), (2 * t81, 0)]
+assert angles_equal(rect81) and not sides_equal(rect81)                                       # 長方形になっている
+corner81 = [[(0, 2 * t81), (0, s81), (t81, s81)], [(t81, s81), (s81, s81), (s81, t81)], [(s81, t81), (s81, 0), (2 * t81, 0)], [(2 * t81, 0), (0, 0), (0, 2 * t81)]]
+assert abs(s81 * s81 - sum(shoelace(t_) for t_ in corner81) - shoelace(rect81)) < 1e-9          # 正方形＝まわりの4つの三角形＋長方形
+f8 = lambda v: f'{round(v, 2):g}cm²'
+eq('算4-8(1) 長方形', ans(M4, 8, 1), f8(shoelace(rect81)))
+s82 = sp8['twosemi']['s']
+r82 = s82 / 2
+in1 = lambda x, y: x >= 0 and x * x + (y - r82) ** 2 <= r82 * r82                              # 左の辺が直径の半円
+in2 = lambda x, y: y >= 0 and (x - r82) ** 2 + y * y <= r82 * r82                              # 下の辺が直径の半円
+lens82 = 2 * (3.14 * r82 * r82 / 4) - r82 * r82
+assert abs(grid_area(lambda x, y: in1(x, y) and in2(x, y), 0, s82, 0, s82, 500) - lens82) < .2
+out82 = s82 * s82 - (2 * (3.14 * r82 * r82 / 2) - lens82)
+assert abs(grid_area(lambda x, y: not in1(x, y) and not in2(x, y), 0, s82, 0, s82, 500) - out82) < .2
+eq('算4-8(2) 半円の重なり', ans(M4, 8, 2), f8(lens82))
+eq('算4-8(3) どちらにもふくまれない部分', ans(M4, 8, 3), f8(out82))
 
-# 9 マッチ棒：正方形を横にならべた図の、辺の数を数える
-def sticks(n):
-    edges = set()
-    for k in range(n):
-        edges |= {((k, 0), (k + 1, 0)), ((k, 1), (k + 1, 1)), ((k, 0), (k, 1)), ((k + 1, 0), (k + 1, 1))}
-    return len(edges)
-assert [sticks(n) for n in (1, 2, 3)] == [4, 7, 10] and all(sticks(n) == 3 * n + 1 for n in range(1, 60))
-eq('算4-9(1) 6個', ans(M4, 9, 1), f'{sticks(6)}本')
-eq('算4-9(2) 50個', ans(M4, 9, 2), f'{sticks(50)}本')
-eq('算4-9(3) 100本', ans(M4, 9, 3), f'{[n for n in range(1, 200) if sticks(n) == 100][0]}個')
-eq('算4-9(4) 253本', ans(M4, 9, 4), f'{[n for n in range(1, 300) if sticks(n) == 253][0]}')
+# 9 立体と面積
+sp9 = {k: v for k, v in M4.SETS[8]['fig']['args']['specs']}
+w91, h91 = sp9['views']['w'], sp9['views']['h']
+r91 = w91 / 2
+base91 = 3.14 * r91 * r91
+assert abs(grid_area(lambda x, y: x * x + y * y <= r91 * r91, -r91, r91, -r91, r91, 500) - base91) < .1
+eq('算4-9(1) 円柱の名前と体積', ans(M4, 9, 1), ['円柱', f'{round(base91 * h91, 2):g}cm³'])
+circ91 = 3600 * 2 * r91 * math.sin(math.pi / 3600)                                              # 円周を、正3600角形の周でたしかめる
+assert abs(circ91 - 3.14 * w91) < .02
+eq('算4-9(2) 表面積', ans(M4, 9, 2), f8(2 * base91 + 3.14 * w91 * h91))
+d92 = sp9['semitri']['d']
+eq('算4-9(3) AB', ans(M4, 9, 3), f'{round(3.14 * d92 / 4, 2):g}cm')                           # 半円＝三角形ABC（円周率3.14）
+ab92 = float(re.search(r'([\d.]+)', ans(M4, 9, 3)).group(1))
+in_semi92 = lambda x, y: y >= 0 and (x - d92 / 2) ** 2 + y * y <= (d92 / 2) ** 2
+in_tri92 = lambda x, y: x >= 0 and y >= 0 and y <= ab92 * (1 - x / d92)
+area_a92 = grid_area(lambda x, y: in_semi92(x, y) and not in_tri92(x, y), 0, d92, 0, ab92, 700)
+area_i92 = grid_area(lambda x, y: in_tri92(x, y) and not in_semi92(x, y), 0, d92, 0, ab92, 700)
+assert abs(area_a92 - area_i92) < .1 and area_a92 > 1                                           # この長さのとき、格子点の数え上げでも、ア＝イ
+ad93, bc93, ae93 = sp9['trap3']['ad'], sp9['trap3']['bc'], sp9['trap3']['ae']
+for hh93 in (3, 8, 11):                                                                         # 高さによらず、3つの面積が等しい
+    A_, D_, B_, C_ = ((bc93 - ad93) / 2, hh93), ((bc93 - ad93) / 2 + ad93, hh93), (0, 0), (bc93, 0)
+    E_, F_ = ((bc93 - ad93) / 2 + ae93, hh93), (ae93, 0)
+    ar93 = [shoelace([A_, B_, E_]), shoelace([B_, E_, F_]), shoelace([E_, F_, C_, D_])]
+    assert max(ar93) - min(ar93) < 1e-9 and abs(sum(ar93) - shoelace([A_, B_, C_, D_])) < 1e-9
+eq('算4-9(4) FC', ans(M4, 9, 4), f'{bc93 - ae93:g}cm')
 
-# 10 速さのグラフ：折れ線から速さを求め、追いつく時刻を、区間ごとに調べる
-pts10 = M4.SETS[9]['fig']['args']['pts']
-seg10 = list(zip(pts10, pts10[1:]))
-speed10 = [Fraction(b_[1] - a_[1], b_[0] - a_[0]) for a_, b_ in seg10]
-eq('算4-10(1) 休けい前', ans(M4, 10, 1), f'分速{speed10[0]:g}m')
-eq('算4-10(2) 休けい後', ans(M4, 10, 2), f'分速{speed10[2]:g}m')
-def pos10(t):
-    for (t1, y1), (t2, y2) in seg10:
-        if t1 <= t <= t2:
-            return Fraction(y1) + Fraction(y2 - y1, t2 - t1) * (t - t1)
-start10 = int(re.search(r'(\d+)分後に', q_text(M4, 10, 3)).group(1))
-v10 = int(re.search(r'分速(\d+)m', q_text(M4, 10, 3)).group(1))
-catch10 = None
-for (t1, y1), (t2, y2) in seg10:                      # 区間ごとに、2人の道のりが等しくなる時刻を求める
-    sl = Fraction(y2 - y1, t2 - t1)
-    t_ = (y1 - sl * t1 + v10 * start10) / (v10 - sl)
-    if max(t1, start10) <= t_ <= t2 and catch10 is None:
-        catch10 = t_
-assert catch10 is not None and v10 * (catch10 - start10) == pos10(catch10)
-eq('算4-10(3) 追いつく時刻', ans(M4, 10, 3), f'{int(catch10)}分{int((catch10 - int(catch10)) * 60)}秒後')
-eq('算4-10(4) 追いついた場所', ans(M4, 10, 4), f'{pos10(catch10):g}m')
+# 10 立体の体積
+sp10 = {k: v for k, v in M4.SETS[9]['fig']['args']['specs']}
+nb = sp10['notchbox']
+cells = sum(1 for i in range(nb['l']) for j in range(nb['w']) for k in range(nb['h']) if not (i >= nb['l'] - nb['n'] and j < nb['n'] and k >= nb['h'] - nb['n']))
+assert f'{nb["n"]}cm' in q_text(M4, 10, 1)
+eq('算4-10(1) 直方体から立方体', ans(M4, 10, 1), f'{cells}cm³')
+hs = sp10['house']
+house10 = [(0, 0), (hs['w'], 0), (hs['w'], hs['wall']), (hs['w'] / 2, hs['wall'] + hs['roof']), (0, hs['wall'])]
+eq('算4-10(2) 家の形の柱', ans(M4, 10, 2), f'{shoelace(house10) * hs["len"]:g}cm³')
+sc10 = sp10['sector']
+r10, hh10 = sc10['r'], sc10['hh']
+assert f'高さは{hh10}cm' in M4.SETS[9]['lead']
+quarter10 = 3.14 * r10 * r10 / 4
+assert abs(grid_area(lambda x, y: x * x + y * y <= r10 * r10, 0, r10, 0, r10, 800) * hh10 - quarter10 * hh10) < .5
+eq('算4-10(3) 円柱の4分の1', ans(M4, 10, 3), f'{round(quarter10 * hh10, 2):g}cm³')
+seg10 = quarter10 - shoelace([(0, 0), (r10, 0), (0, r10)])
+assert abs(grid_area(lambda x, y: x * x + y * y <= r10 * r10 and x + y >= r10, 0, r10, 0, r10, 800) * hh10 - seg10 * hh10) < .5
+eq('算4-10(4) 三角柱を切りとった立体', ans(M4, 10, 4), f'{round(seg10 * hh10, 2):g}cm³')
 
 # ---------------- 形式（tools/tenri_rs_*.py をすべて） ----------------
 for f in sorted(Path(__file__).resolve().parent.glob('tenri_rs_*.py')):
