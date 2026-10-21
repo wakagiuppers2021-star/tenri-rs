@@ -19,6 +19,7 @@ import tenri_rs_rika4 as R4
 import tenri_rs_rika5 as R5
 import tenri_rs_rika6 as R6
 import tenri_rs_rika7 as R7
+import tenri_rs_rika8 as R8
 import tenri_rs_shakai1 as S1
 import tenri_rs_shakai2 as S2
 import tenri_rs_shakai3 as S3
@@ -832,6 +833,135 @@ h10 = {'ア': 122, 'イ': 54, 'ウ': 36, 'エ': 18, 'オ': 70, 'カ': 41}
 part10 = {122: '接眼レンズ', 70: '調節ねじ', 54: '対物レンズ', 41: 'クリップ', 36: 'ステージ', 18: '反射鏡'}
 eq('理7-10(1) 顕微鏡の部分', ans(R7, 10, 1), [part10[h10[k]] for k in 'アイウエオカ'])
 eq('理7-10(2) 倍率', ans(R7, 10, 2), f'{10 * 40}倍')
+
+# ---------------- 理科・大問8 ----------------
+# 1 地震の波：到達時刻の差から速さを求める
+rows = R8.SETS[0]['table']['rows'][1:]
+sec = lambda t: int(re.search(r'(\d+)分(\d+)秒', t).group(1)) * 60 + int(re.search(r'(\d+)分(\d+)秒', t).group(2))
+dist81 = {r[0]: int(r[1]) for r in rows}
+tp81 = {r[0]: sec(r[2]) for r in rows}
+ts81 = {r[0]: sec(r[3]) for r in rows}
+vp81 = (dist81['B'] - dist81['A']) / (tp81['B'] - tp81['A'])
+vs81 = (dist81['B'] - dist81['A']) / (ts81['B'] - ts81['A'])
+assert all(abs(dist81[k] / vp81 - (tp81[k] - tp81['A'] + dist81['A'] / vp81)) < 1e-9 for k in 'ABC')
+eq('理8-1(2) P波の速さ', ans(R8, 1, 2), f'{num(vp81)}km/s')
+eq('理8-1(3) S波の速さ', ans(R8, 1, 3), f'{num(vs81)}km/s')
+t0 = tp81['A'] - dist81['A'] / vp81
+eq('理8-1(4) 発生時刻', ans(R8, 1, 4), f'{int(t0) // 3600 + 8:d}時{int(t0) % 3600 // 60:02d}分{int(t0) % 60:02d}秒')
+eq('理8-1(5) Cの初期微動継続時間', ans(R8, 1, 5), f'{ts81["C"] - tp81["C"]}秒')
+eq('理8-1(6) 15秒', ans(R8, 1, 6), f'{round(15 / (1 / vs81 - 1 / vp81))}km')
+
+# 2 蒸散：試験管の水の減った量から
+rows = R8.SETS[1]['table']['rows']
+v82 = dict(zip(rows[0][1:], [float(x) for x in rows[2][1:]]))
+eq('理8-2(3) 葉つきの枝', ans(R8, 2, 3), f'{v82["C"] - v82["A"]:.1f}mL')
+eq('理8-2(4) くき', ans(R8, 2, 4), f'{v82["B"] - v82["A"]:.1f}mL')
+front, back = v82['C'] - v82['D'], v82['C'] - v82['E']
+eq('理8-2(5) 葉の表', ans(R8, 2, 5), f'{front:.1f}mL')
+eq('理8-2(6) 葉の裏', ans(R8, 2, 6), f'{back:.1f}mL')
+assert abs(front + back + (v82['B'] - v82['A']) - (v82['C'] - v82['A'])) < 1e-9
+
+# 3 浮き沈み：1cm³あたりの重さが、水（1g）より軽いか重いか
+rows = R8.SETS[2]['table']['rows']
+vol83 = dict(zip(rows[0][1:], [int(x) for x in rows[1][1:]]))
+wt83 = dict(zip(rows[0][1:], [int(x) for x in rows[2][1:]]))
+den83 = {k: wt83[k] / vol83[k] for k in vol83}
+eq('理8-3(1) 1cm³あたりの重さ', ans(R8, 3, 1), [f'{den83[k]:g}g' if den83[k] != 1 else '1.0g' for k in 'アイウエ'] if False else
+   [{0.8: '0.8g', 3.0: '3.0g', 0.92: '0.92g', 1.0: '1.0g'}[round(den83[k], 2)] for k in 'アイウエ'])
+eq('理8-3(2) しずむ', ans(R8, 3, 2), join(k for k in 'アイウエ' if den83[k] > 1))
+eq('理8-3(3) うく', ans(R8, 3, 3), join(k for k in 'アイウエ' if den83[k] < 1))
+eq('理8-3(4) アの水中の体積', ans(R8, 3, 4), f'{wt83["ア"]}cm³')
+eq('理8-3(5) ウの水面上の体積', ans(R8, 3, 5), f'{vol83["ウ"] - wt83["ウ"]}cm³')
+eq('理8-3(6) 水中のばねばかり', ans(R8, 3, 6), f'{wt83["イ"] - vol83["イ"]}g')
+
+# 4 凸レンズ：1/f＝1/a＋1/b
+rows = R8.SETS[3]['table']['rows']
+a84 = [int(x) for x in rows[0][1:]]
+b84 = [int(x) for x in rows[1][1:]]
+fl84 = {Fraction(1, 1) / (Fraction(1, a_) + Fraction(1, b_)) for a_, b_ in zip(a84, b84)}
+assert len(fl84) == 1
+f84 = float(fl84.pop())
+eq('理8-4(1) 焦点距離', ans(R8, 4, 1), f'{num(f84)}cm')
+eq('理8-4(3) 30cmのとき', ans(R8, 4, 3), f'{num(b84[a84.index(30)] / 30)}倍')
+eq('理8-4(4) 15cmのとき', ans(R8, 4, 4), f'{num(b84[a84.index(15)] / 15)}倍')
+assert b84 == sorted(b84, reverse=True) and a84 == sorted(a84)
+eq('理8-4(8) 焦点の位置', ans(R8, 4, 8), f'{num(f84)}cm')
+
+# 5 太陽の南中高度
+lat85 = int(re.search(r'北緯(\d+)度', R8.SETS[4]['lead']).group(1))
+tilt85 = float(re.search(r'約([\d.]+)度', R8.SETS[4]['lead']).group(1))
+eq('理8-5(1) 夏至', ans(R8, 5, 1), f'{num(90 - lat85 + tilt85)}度')
+eq('理8-5(2) 冬至', ans(R8, 5, 2), f'{num(90 - lat85 - tilt85)}度')
+eq('理8-5(3) 春分', ans(R8, 5, 3), f'{num(90 - lat85)}度')
+
+# 6 月の形：図の並びと、月齢
+ph86 = dict(zip('アイウエオカキク', R8.SETS[5]['fig']['args']['phases']))
+name86 = {0: '新月', 1: '三日月', 2: '上弦の月', 4: '満月', 6: '下弦の月'}
+lab86 = {v: k for k, v in ph86.items()}
+eq('理8-6(2) 月の名前', ans(R8, 6, 2), [lab86[[p for p, n in name86.items() if n == nm][0]] for nm in R8.SETS[5]['qs'][1]['labels']])
+eq('理8-6(3) 満月', ans(R8, 6, 3), lab86[4])
+eq('理8-6(4) 新月から', ans(R8, 6, 4), '→'.join(lab86[p] for p in range(8)))
+eq('理8-6(5) 夕方の西空', ans(R8, 6, 5), lab86[1])
+eq('理8-6(6) 明け方の東空', ans(R8, 6, 6), lab86[7])
+age86 = 7.4
+transit86 = (12 + 24 * age86 / 29.5) % 24
+eq('理8-6(7) 上弦の月の南中', ans(R8, 6, 7), [k for k, v in choices(q_text(R8, 6, 7)).items() if v == ('夕方' if 15 <= transit86 <= 21 else '')][0])
+eq('理8-6(8) 満月', ans(R8, 6, 8), f'約{round(29.5 / 2)}日後')
+
+# 7 水溶液：BTB液・残るもの・二酸化炭素・アルミニウムから決める
+props87 = {'塩酸': ('黄色', '何も残らない', '変化なし', 'あわが出てとける'), '水酸化ナトリウム水溶液': ('青色', '白い固体', '変化なし', 'あわが出てとける'),
+           '石灰水': ('青色', '白い固体', '白くにごる', '変化なし'), '食塩水': ('緑色', '白い固体', '変化なし', '変化なし'),
+           '炭酸水': ('黄色', '何も残らない', '変化なし', '変化なし')}
+rows = R8.SETS[6]['table']['rows']
+col87 = [tuple(rows[r][c] for r in range(1, 5)) for c in range(1, 6)]
+name87 = []
+for ob in col87:
+    hit = [n for n, v in props87.items() if v == ob]
+    assert len(hit) == 1, (ob, hit)
+    name87.append(hit[0])
+eq('理8-7(1) 水溶液の名前', ans(R8, 7, 1), name87)
+eq('理8-7(2) アルカリ性', ans(R8, 7, 2), join('ABCDE'[k] for k in range(5) if col87[k][0] == '青色'))
+eq('理8-7(3) 酸性', ans(R8, 7, 3), join('ABCDE'[k] for k in range(5) if col87[k][0] == '黄色'))
+
+# 8 栄養：表の値とエネルギー（炭水化物・たんぱく質4kcal、脂質9kcal）
+rows = R8.SETS[7]['table']['rows']
+nut88 = {r[0]: [int(x) for x in r[1:]] for r in rows[1:]}
+kcal88 = [4, 4, 9]
+eq('理8-8(3) 炭水化物が最も多い', ans(R8, 8, 3), max(nut88, key=lambda k: nut88[k][0]))
+eq('理8-8(4) ごはん200g', ans(R8, 8, 4), f'{nut88["ごはん"][0] * 2}g')
+eq('理8-8(5) 牛乳のエネルギー', ans(R8, 8, 5), f'{sum(a_ * b_ for a_, b_ in zip(nut88["牛乳"], kcal88))}kcal')
+eq('理8-8(6) 卵のエネルギー', ans(R8, 8, 6), f'{sum(a_ * b_ for a_, b_ in zip(nut88["卵"], kcal88))}kcal')
+
+# 9 てこ：穴の記号（左から）→ 支点からの距離と向き。つり合い＝距離×重さの和が左右で等しい
+nm89 = 'アイウエオカキクケコサシ'
+dist89 = {ch: abs(6 - i) if i < 6 else i - 5 for i, ch in enumerate(nm89)}
+side89 = {ch: ('左' if i < 6 else '右') for i, ch in enumerate(nm89)}
+assert R8.SETS[8]['fig']['args']['names'] == nm89
+def solve89(i):
+    q = q_text(R8, 9, i)
+    known = [(h_, int(w_)) for h_, w_ in re.findall(r'([ア-シ])に(\d+)g', q)]
+    tgt = re.search(r'([ア-シ])に何g', q).group(1)
+    assert all(side89[h_] != side89[tgt] for h_, _ in known)
+    return sum(dist89[h_] * w_ for h_, w_ in known) / dist89[tgt]
+for qi, label in [(1, 'ウ30gでケ'), (2, 'エ・オでサ'), (3, 'クでア'), (6, 'ケ・サでオ')]:
+    eq(f'理8-9({qi}) {label}', ans(R8, 9, qi), f'{num(solve89(qi))}g')
+q95 = q_text(R8, 9, 5)                                                   # 「コとシに、10gずつ」：2つの穴に同じ重さ
+w95 = int(re.search(r'(\d+)gずつ', q95).group(1))
+tgt95 = re.search(r'([ア-シ])に何g', q95).group(1)
+eq('理8-9(5) コ・シでウ', ans(R8, 9, 5), f'{num((dist89["コ"] * w95 + dist89["シ"] * w95) / dist89[tgt95])}g')
+q97 = q_text(R8, 9, 7)
+h97, w97 = re.search(r'([ア-シ])に(\d+)gのおもりをつるしました。左に(\d+)g', q97).group(1), int(re.search(r'(\d+)gのおもりをつるしました。左', q97).group(1))
+w97b = int(re.search(r'左に(\d+)g', q97).group(1))
+need97 = dist89[h97] * w97 / w97b
+eq('理8-9(7) 左の穴', ans(R8, 9, 7), [ch for ch in nm89 if side89[ch] == '左' and dist89[ch] == need97][0])
+lever89 = {'ピンセット': '力点', '手押し車': '作用点', 'くぎぬき': '支点', '和ばさみ': '力点'}
+eq('理8-9(8) 作用点が真ん中', ans(R8, 9, 8), [k for k, v in choices(q_text(R8, 9, 8)).items() if lever89[v] == '作用点'][0])
+
+# 10 種子・根・葉
+move810 = {'タンポポ': '風', 'オナモミ': '動物', 'ヤシ': '水', 'ホウセンカ': '自分ではじける'}
+eq('理8-10(1) 種子の運ばれ方', ans(R8, 10, 1), [move810[k] for k in R8.SETS[9]['qs'][0]['labels']])
+root810 = {'アサガオ': '主根と側根', 'ススキ': 'ひげ根'}
+eq('理8-10(4) 根のつくり', ans(R8, 10, 4), [root810[k] for k in R8.SETS[9]['qs'][3]['labels']])
 
 # ---------------- 社会・大問1 ----------------
 capital = {'青森県': '青森市', '静岡県': '静岡市', '京都府': '京都市', '香川県': '高松市', '新潟県': '新潟市',

@@ -485,7 +485,8 @@ def fig_magnet(c, x, top, w, h):
     text(c, ox, y - r - 23, '（黒いほうがN極）', 8, color=MUTED, center=True)
 
 
-def fig_lever(c, x, top, w, h):
+def fig_lever(c, x, top, w, h, names=None):
+    """実験用てこ。names=12文字を渡すと、穴の番号のかわりに、左から順に記号を書く。"""
     cx, u = x + w / 2, 28
     by = top - 34
     half = 6 * u + 14
@@ -507,7 +508,8 @@ def fig_lever(c, x, top, w, h):
             c.circle(hx, by, 2.2, stroke=1, fill=1)
             c.line(hx, by - 4, hx, by - 11)
             c.arc(hx - 3, by - 17, hx + 3, by - 11, 180, 180)
-            text(c, hx, by + 10, str(k), 9, center=True)
+            lab = str(k) if names is None else (names[6 - k] if side == -1 else names[5 + k])
+            text(c, hx, by + 10, lab, 9, center=True)
     text(c, cx - half - 16, by - 4, '左', 10, bold=True)
     text(c, cx + half + 5, by - 4, '右', 10, bold=True)
 
@@ -1445,6 +1447,81 @@ def fig_microscope(c, x, top, w, h):
         _badge(c, tx + (6 if tx > cx else -6), ty, lab)
 
 
+def fig_lens(c, x, top, w, h):
+    """光学台。ろうそく・凸レンズ・スクリーンと、レンズの両側の焦点。"""
+    cx, ay = x + w / 2, top - h / 2 - 2
+    setline(c, .7, MUTED, (3, 2))
+    c.line(cx - 190, ay, cx + 190, ay)
+    c.setDash()
+    setline(c, 1.2)
+    c.setFillColor(colors.HexColor('#E3EBF0'))
+    c.ellipse(cx - 5, ay - 30, cx + 5, ay + 30, stroke=1, fill=1)
+    text(c, cx, ay - 44, '凸レンズ', 9, center=True)
+    for dx in (-60, 60):
+        _dot(c, cx + dx, ay)
+        text(c, cx + dx, ay - 14, '焦点', 8.5, color=MUTED, center=True)
+    # ろうそく
+    qx = cx - 130
+    setline(c, 1)
+    c.setFillColor(PALE)
+    c.rect(qx - 3, ay, 6, 16, stroke=1, fill=1)
+    c.setFillColor(colors.HexColor('#C9822B'))
+    c.drawPath(_poly(c, [(qx - 3, ay + 16), (qx + 3, ay + 16), (qx, ay + 28)]), stroke=0, fill=1)
+    text(c, qx, ay - 44, 'ろうそく', 9, center=True)
+    # スクリーンと、さかさまの像
+    sx = cx + 130
+    setline(c, 2)
+    c.line(sx, ay - 34, sx, ay + 34)
+    c.setFillColor(colors.HexColor('#C9822B'))
+    c.drawPath(_poly(c, [(sx + 3, ay - 12), (sx + 9, ay - 12), (sx + 6, ay - 4)]), stroke=0, fill=1)
+    text(c, sx, ay - 44, 'スクリーン', 9, center=True)
+
+
+def fig_moonphases(c, x, top, w, h, phases=(0, 1, 2, 3, 4, 5, 6, 7), labels='アイウエオカキク'):
+    """月の形を並べる。phases は 0=新月 1=三日月 2=上弦 3=右が大きい 4=満月 5=左が大きい 6=下弦 7=左の細い月。"""
+    n = len(phases)
+    pw = w / n
+    r = 17
+    cy = top - h / 2 - 4
+    for k, ph in enumerate(phases):
+        cx = x + k * pw + pw / 2
+        circ = c.beginPath()
+        circ.circle(cx, cy, r)
+        c.saveState()
+        c.clipPath(circ, stroke=0, fill=0)
+        c.setFillColor(SHADE)
+        c.rect(cx - r, cy - r, 2 * r, 2 * r, stroke=0, fill=1)
+        c.setFillColor(colors.white)
+        if ph == 4:
+            c.rect(cx - r, cy - r, 2 * r, 2 * r, stroke=0, fill=1)
+        elif ph in (1, 2, 3):
+            c.rect(cx, cy - r, r, 2 * r, stroke=0, fill=1)
+            ex = r * .5 if ph != 2 else 0
+            c.saveState()
+            half = c.beginPath()
+            half.rect(cx if ph == 1 else cx - r, cy - r, r, 2 * r)
+            c.clipPath(half, stroke=0, fill=0)
+            c.setFillColor(SHADE if ph == 1 else colors.white)
+            if ex:
+                c.ellipse(cx - ex, cy - r, cx + ex, cy + r, stroke=0, fill=1)
+            c.restoreState()
+        elif ph in (5, 6, 7):
+            c.rect(cx - r, cy - r, r, 2 * r, stroke=0, fill=1)
+            ex = r * .5 if ph != 6 else 0
+            c.saveState()
+            half = c.beginPath()
+            half.rect(cx - r if ph == 7 else cx, cy - r, r, 2 * r)
+            c.clipPath(half, stroke=0, fill=0)
+            c.setFillColor(SHADE if ph == 7 else colors.white)
+            if ex:
+                c.ellipse(cx - ex, cy - r, cx + ex, cy + r, stroke=0, fill=1)
+            c.restoreState()
+        c.restoreState()
+        setline(c, .8)
+        c.circle(cx, cy, r, stroke=1, fill=0)
+        text(c, cx, cy - r - 14, labels[k], 11, bold=True, center=True)
+
+
 FIGS = {'monochord': fig_monochord, 'circuits': fig_circuits, 'moon': fig_moon,
         'ice_graph': fig_ice_graph, 'pendulum': fig_pendulum,
         'strata': fig_strata, 'magnet': fig_magnet, 'lever': fig_lever, 'sanken': fig_sanken,
@@ -1453,7 +1530,7 @@ FIGS = {'monochord': fig_monochord, 'circuits': fig_circuits, 'moon': fig_moon,
         'circuitset': fig_circuitset, 'ammeter': fig_ammeter, 'circulation': fig_circulation, 'cans': fig_cans,
         'mirror': fig_mirror, 'digest': fig_digest, 'watercycle': fig_watercycle, 'pulleys': fig_pulleys, 'shadow': fig_shadow,
         'leverbar': fig_leverbar, 'balance': fig_balance, 'cylinder': fig_cylinder, 'rods': fig_rods,
-        'fuleaf': fig_fuleaf, 'river': fig_river, 'microscope': fig_microscope}
+        'fuleaf': fig_fuleaf, 'river': fig_river, 'microscope': fig_microscope, 'lens': fig_lens, 'moonphases': fig_moonphases}
 
 
 # ---------- 表・本文ブロック ----------
