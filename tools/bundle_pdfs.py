@@ -2,7 +2,8 @@
 
 使い方:
   python -X utf8 tools/bundle_pdfs.py                    理科大問2〜9・社会大問2〜5をまとめる
-  python -X utf8 tools/bundle_pdfs.py --all              大問1もふくめて、できている大問をすべてまとめる（算数もふくむ）
+  python -X utf8 tools/bundle_pdfs.py --all              大問1もふくめて、できている大問をすべてまとめる（算数・国語もふくむ）
+  python -X utf8 tools/bundle_pdfs.py kokugo             国語の大問1〜4だけをまとめる（ほかの教科のまとめPDFは、作り直さない）
 
 出力: output/まとめ/天理中学校_<理科|社会>_大問<最初>〜<最後>_<問題|解答解説|出題分析>まとめ.pdf
 output/ の大問ごとのPDFは、読むだけで、変えない。
@@ -20,7 +21,7 @@ sys.path.insert(0, str(ROOT / 'tools'))
 
 OUT = ROOT / 'output' / 'まとめ'
 DEFAULT = {'rika': range(2, 10), 'shakai': range(2, 6)}
-SUBJ = {'rika': '理科', 'shakai': '社会', 'sansu': '算数'}
+SUBJ = {'rika': '理科', 'shakai': '社会', 'sansu': '算数', 'kokugo': '国語'}
 KINDS = [('問題', '*_問題.pdf'), ('解答解説', '*_解答解説.pdf'), ('出題分析', '*_出題分析と使い方.pdf')]
 
 
@@ -62,8 +63,12 @@ def bundle(subj, dais):
 
 
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] in SUBJ:                  # 教科を1つだけ（大問1〜9のうち、できているもの）
+        for name, pages in bundle(sys.argv[1], range(1, 10)):
+            print(f'{name}  {pages}ページ')
+        return
     every = '--all' in sys.argv
-    for subj, default in (DEFAULT if not every else {**DEFAULT, 'sansu': None}).items():
+    for subj, default in (DEFAULT if not every else {**DEFAULT, 'sansu': None, 'kokugo': None}).items():
         dais = range(1, 10) if every else default
         for name, pages in bundle(subj, dais):
             print(f'{name}  {pages}ページ')

@@ -1909,6 +1909,41 @@ def fig_matchsticks(c, x, top, w, h, counts=(1, 2, 3)):
     text(c, cx - 4, by + side / 2 - 3, '…', 12)
 
 
+def fig_roadmap(c, x, top, w, h, cols=4, rows=3, labels=(), blocked=()):
+    """格子状の道の地図（国語の道案内）。labels は (i, j, 名前)。blocked は、通れない道 ((i1, j1), (i2, j2))。北は上。"""
+    dx, dy = (w - 70) / (cols - 1), (h - 34) / (rows - 1)
+    ox, oy = x + 34, top - h + 16
+    P = lambda i, j: (ox + i * dx, oy + j * dy)
+    setline(c, 1.6)
+    for j in range(rows):
+        for i in range(cols - 1):
+            c.line(*P(i, j), *P(i + 1, j))
+    for i in range(cols):
+        for j in range(rows - 1):
+            c.line(*P(i, j), *P(i, j + 1))
+    for (a, b) in blocked:                                   # 通れない道：白ぬきにして、×と「工事中」
+        (x1, y1), (x2, y2) = P(*a), P(*b)
+        mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+        if not DRY:
+            c.setFillColor(colors.white)
+            c.setStrokeColor(colors.white)
+            c.rect(mx - 11, my - 5, 22, 10, fill=1, stroke=0) if y1 == y2 else c.rect(mx - 5, my - 11, 10, 22, fill=1, stroke=0)
+            setline(c, 1.4)
+            c.line(mx - 5, my - 5, mx + 5, my + 5)
+            c.line(mx - 5, my + 5, mx + 5, my - 5)
+        text(c, mx, my + (8 if y1 == y2 else -3), '工事中', 8, center=True, bold=True) if y1 == y2 else text(c, mx + 24, my - 3, '工事中', 8, center=True, bold=True)
+    for (i, j, name) in labels:
+        px, py = P(i, j)
+        wb = tw(name, 8.5) + 8
+        if not DRY:
+            c.setFillColor(colors.white)
+            setline(c, .8)
+            c.rect(px - wb / 2, py - 7, wb, 14, fill=1, stroke=1)
+        text(c, px, py - 3, name, 8.5, center=True)
+    arrow(c, x + 12, top - 26, x + 12, top - 5, head=5)       # 北
+    text(c, x + 12, top - 38, '北', 9, bold=True, center=True)
+
+
 FIGS = {'monochord': fig_monochord, 'circuits': fig_circuits, 'moon': fig_moon,
         'ice_graph': fig_ice_graph, 'pendulum': fig_pendulum,
         'strata': fig_strata, 'magnet': fig_magnet, 'lever': fig_lever, 'sanken': fig_sanken,
@@ -1918,7 +1953,7 @@ FIGS = {'monochord': fig_monochord, 'circuits': fig_circuits, 'moon': fig_moon,
         'mirror': fig_mirror, 'digest': fig_digest, 'watercycle': fig_watercycle, 'pulleys': fig_pulleys, 'shadow': fig_shadow,
         'leverbar': fig_leverbar, 'balance': fig_balance, 'cylinder': fig_cylinder, 'rods': fig_rods,
         'fuleaf': fig_fuleaf, 'river': fig_river, 'microscope': fig_microscope, 'lens': fig_lens, 'moonphases': fig_moonphases, 'eye': fig_eye,
-        'piechart': fig_piechart, 'symshapes': fig_symshapes, 'letters': fig_letters, 'areas': fig_areas, 'matchsticks': fig_matchsticks}
+        'roadmap': fig_roadmap, 'piechart': fig_piechart, 'symshapes': fig_symshapes, 'letters': fig_letters, 'areas': fig_areas, 'matchsticks': fig_matchsticks}
 
 
 # ---------- 表・本文ブロック ----------
@@ -2064,7 +2099,136 @@ def page_header(c, subj, dai, title, label, idx, total, year_note):
     text(c, RM - tw(right, 8), 25, right, 8, color=MUTED)
 
 
+# ---------- 作文（縦書き原稿用紙） ----------
+GENKO_COLS, GENKO_ROWS, GENKO_CS = 10, 20, 22.5            # 縦書き200字（20字×10行）
+
+
+def draw_genko(c, gx, top):
+    """縦書きの原稿用紙（右上から書き始める）。まん中の太い線は、100字の目じるし。"""
+    cs, cols, rows = GENKO_CS, GENKO_COLS, GENKO_ROWS
+    if not DRY:
+        setline(c, .4, SHADE)
+        for r in range(rows + 1):
+            c.line(gx, top - r * cs, gx + cols * cs, top - r * cs)
+        for k in range(cols + 1):
+            c.line(gx + k * cs, top, gx + k * cs, top - rows * cs)
+        setline(c, 1.0, INK)
+        c.rect(gx, top - rows * cs, cols * cs, rows * cs, fill=0, stroke=1)
+        c.line(gx + cols * cs / 2, top, gx + cols * cs / 2, top - rows * cs)
+    for r in (5, 10, 15, 20):                                # 1行の字数の目じるし
+        text(c, gx - 5 - tw(str(r), 7), top - (r - .5) * cs - 2.4, str(r), 7, color=MUTED)
+
+
+def render_essay_problem(c, subj, dai, i, st, total):
+    ess = st['essay']
+    page_header(c, subj, dai, f'第{i:02d}セット　{st["title"]}', '問題', i, total,
+                st.get('note') or f'{st["year"]}年度 大問{dai}の出題形式を参考にした独自教材（過去問の転載ではありません）')
+    text(c, LM, H - 109, '名前：____________________  日付：____／____  時間：____分', 9.5)
+    y = H - 130
+    lead_lines = wrap(st['lead'], RM - LM - 20, 10.5)
+    bh = len(lead_lines) * 16 + 10
+    if not DRY:
+        c.setFillColor(PALE)
+        c.rect(LM, y - bh + 14, RM - LM, bh, fill=1, stroke=0)
+    for ln in lead_lines:
+        text(c, LM + 10, y, ln, 10.5)
+        y -= 16
+    top = y - bh + len(lead_lines) * 16 - 12                  # 左の説明と、右の原稿用紙の、上のはし
+    gw = GENKO_COLS * GENKO_CS
+    gx = RM - gw
+    text(c, RM - tw('原稿用紙（縦書き・200字）', 8), top + 3, '原稿用紙（縦書き・200字）', 8, color=MUTED)
+    draw_genko(c, gx, top - 8)
+    gbot = top - 8 - GENKO_ROWS * GENKO_CS
+    pw = gx - 16 - LM
+    yy = top - 12
+    text(c, LM, yy, '題', 10, bold=True, color=ACCENT)
+    yy, _ = para(c, LM + 22, yy, ess['topic'], pw - 22, 10.5, 16.5, INK, True)
+    yy -= 6
+    text(c, LM, yy, '条件', 10, bold=True, color=ACCENT)
+    for k, cond in enumerate(ess['conds']):
+        text(c, LM + 22, yy, '①②③④⑤⑥'[k], 10)
+        yy, _ = para(c, LM + 36, yy, cond, pw - 36, 10, 15.5)
+        yy -= 1
+    yy -= 4
+    mat = ess.get('material')
+    if mat:
+        text(c, LM, yy, '資料', 10, bold=True, color=ACCENT)
+        if mat['kind'] == 'table':
+            yy = draw_table(c, LM + 30, yy + 8, mat['rows'], mat['colw'], mat.get('size', 9), mat.get('head_col', True), mat.get('head_row', True)) - 6
+        elif mat['kind'] == 'fig':
+            if not DRY:
+                FIGS[mat['name']](c, LM + 28, yy + 12, pw - 28, mat['h'], **mat.get('args', {}))
+            yy -= mat['h'] - 6
+        else:
+            yy, _ = para(c, LM + 30, yy, mat['text'], pw - 30, 9.5, 15)
+        if mat.get('note'):
+            yy, _ = para(c, LM + 30, yy - 2, mat['note'], pw - 30, 8.5, 13, MUTED)
+    assert yy >= gbot - 4, ('作文の説明が長すぎる', st['title'], yy, gbot)
+    mtop, mbot = gbot - 18, 72                                 # メモらん
+    text(c, LM, mtop + 2, 'メモらん（書くことを、先に書き出そう）', 9, bold=True, color=ACCENT)
+    labs = ess.get('memo', ['はじめ', 'なか', 'おわり'])
+    bw = (RM - LM - 12 * (len(labs) - 1)) / len(labs)
+    for k, lab in enumerate(labs):
+        bx = LM + k * (bw + 12)
+        if not DRY:
+            setline(c, .6, MUTED, (2, 2))
+            c.rect(bx, mbot, bw, mtop - 8 - mbot, fill=0, stroke=1)
+            c.setDash()
+        text(c, bx + 6, mtop - 20, lab, 8.5, color=MUTED)
+    text(c, LM, 44, '字数：______字', 9.5, bold=True)
+    return mbot
+
+
+def render_essay_answer(c, subj, dai, i, st, total, s1):
+    ess, q = st['essay'], st['qs'][0]
+    page_header(c, subj, dai, f'解答・解説　第{i:02d}セット　{st["title"]}', '解答', i, total,
+                st.get('note') or f'{st["year"]}年度 大問{dai}の出題形式を参考にした独自教材')
+    y = H - 120
+    n = len(q['ans'].replace('\n', ''))
+    text(c, LM, y, f'例文（{n}字）', 11, bold=True, color=ACCENT)
+    y -= 8
+    text(c, LM + 100, y + 8, '（これと同じでなくてよい。条件を守り、自分の言葉で書けていればよい）', 8.5, color=MUTED)
+    y -= 12
+    for para_ in q['ans'].split('\n'):
+        y, _ = para(c, LM + 8, y, '　' + para_, RM - LM - 16, s1, s1 * 1.65)
+        y -= 3
+    y -= 8
+    text(c, LM, y, 'この作文のポイント', 11, bold=True, color=ACCENT)
+    y -= 18
+    for line in q['ex'].split('\n'):
+        text(c, LM + 4, y, '・', s1)
+        y, _ = para(c, LM + 18, y, line, RM - LM - 18, s1 - .5, (s1 - .5) * 1.55)
+        y -= 3
+    y -= 10
+    text(c, LM, y, '自己採点チェック表', 11, bold=True, color=ACCENT)
+    y -= 8
+    rows = ess.get('rubric') or [
+        ['観点', 'チェックする内容', '配点', '自己採点'],
+        ['条件', '字数・段落・指定された言葉や形式を守っている', '3点', '　　点'],
+        ['内容', '題に合った内容で、理由や具体例（体験）が書けている', '3点', '　　点'],
+        ['表現', '主語と述語が合い、文末（です・ます／だ・である）がそろっている', '2点', '　　点'],
+        ['表記', '漢字・かなづかい・句読点・原稿用紙の使い方に、まちがいがない', '2点', '　　点'],
+    ]
+    y = draw_table(c, LM, y, rows, [48, 345, 42, 76], 9.2, head_col=True, left_cols=(1,))
+    text(c, RM - 120, y - 16, '合計　　　　／10点', 10, bold=True)
+    y -= 46
+    text(c, LM, y, '原稿用紙の使い方', 11, bold=True, color=ACCENT)
+    y -= 18
+    for line in ['題名・名前は、書かなくてよいと指示されたときは書かない。一行目の一番上のますから書き始める。',
+                 '段落のはじめは、一ますあける。',
+                 '句読点（、。）も一字として、一ますに書く。行のはじめにくるときは、前の行の最後のますの中に、文字といっしょに書く。',
+                 '数字は、漢数字で書く（例：十二人・五百トン）。',
+                 '小さい「っ」「ゃ」「ゅ」「ょ」も、一ますに書く。',
+                 '字数は、句読点もふくめて数える。指定された字数の八割（百六十字なら百三十字くらい）は書くようにする。']:
+        text(c, LM + 4, y, '・', s1 - .5)
+        y, _ = para(c, LM + 18, y, line, RM - LM - 18, s1 - .5, (s1 - .5) * 1.55)
+        y -= 2
+    return y - 4
+
+
 def render_problem(c, subj, dai, i, st, total, qs):
+    if st.get('essay'):
+        return render_essay_problem(c, subj, dai, i, st, total)
     page_header(c, subj, dai, f'第{i:02d}セット　{st["title"]}', '問題', i, total,
                 st.get('note') or f'{st["year"]}年度 大問{dai}の出題形式を参考にした独自教材（過去問の転載ではありません）')
     text(c, LM, H - 109, '名前：____________________  日付：____／____  時間：____分', 9.5)
@@ -2163,6 +2327,8 @@ def ans_text(q):
 
 
 def render_answer(c, subj, dai, i, st, total, s1, s2):
+    if st.get('essay'):
+        return render_essay_answer(c, subj, dai, i, st, total, s1)
     page_header(c, subj, dai, f'解答・解説　第{i:02d}セット　{st["title"]}', '解答', i, total,
                 st.get('note') or f'{st["year"]}年度 大問{dai}の出題形式を参考にした独自教材')
     text(c, LM, H - 108, '（　）の中は別の答え方・正解にしてよい例です。記述は、解答例と同じ内容が書けていれば正解とします。'

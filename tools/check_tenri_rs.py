@@ -30,6 +30,7 @@ import tenri_rs_sansu4 as M4
 import tenri_rs_kokugo1 as K1
 import tenri_rs_kokugo2 as K2
 import tenri_rs_kokugo3 as K3
+import tenri_rs_kokugo4 as K4
 import ja_grammar
 import world_outline
 from build_tenri_rs import SANKEN_ARROWS, SHAPES
@@ -2044,6 +2045,107 @@ eq(f'国2 語句・熟語{n2_}問（意味から熟語・組み立て・対義�
 # 敬語・かなづかい・呼応・接続語のつながり方は、tools/ja_grammar.py の表と照合する。
 n3_, bad3_ = ja_grammar.check_bunpo(K3)
 eq(f'国3 文法{n3_}問（品詞・活用・文節・助詞・助動詞・敬語・修辞法・かなづかい・呼応）の答え', bad3_, [])
+
+# ---------------- 国語・大問4（作文） ----------------
+def kan2(n_):
+    """整数（999まで）の漢数字。（データ側とは別に、ここでも書いた）"""
+    d_ = '〇一二三四五六七八九'
+    h_, r_ = divmod(n_, 100)
+    t_, u_ = divmod(r_, 10)
+    return ('' if h_ == 1 else d_[h_] if h_ else '') + ('百' if h_ else '') + ('' if t_ == 1 else d_[t_] if t_ else '') + ('十' if t_ else '') + (d_[u_] if u_ else '')
+
+
+POLITE = ('です', 'ます', 'ました', 'でした', 'ません', 'でしょう', 'ましょう', 'ください')
+FORBID = set('「」『』（）()ー…―') | set('0123456789') | set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ')
+
+
+def walk(route_):
+    """道案内の経路をたどり、通った交差点の名前の列と、ゴールの位置を返す。通れない道・地図の外に出たら、None。"""
+    w_, h_ = route_['size']
+    x_, y_ = route_['start']
+    blocked_ = {frozenset(b_) for b_ in route_['blocked']}
+    seen_ = [route_['labels'].get((x_, y_))]
+    for d_, k_ in route_['moves']:
+        dx_, dy_ = {'E': (1, 0), 'W': (-1, 0), 'N': (0, 1), 'S': (0, -1)}[d_]
+        for _ in range(k_):
+            nx_, ny_ = x_ + dx_, y_ + dy_
+            if not (0 <= nx_ < w_ and 0 <= ny_ < h_) or frozenset({(x_, y_), (nx_, ny_)}) in blocked_:
+                return None, None
+            x_, y_ = nx_, ny_
+            seen_.append(route_['labels'].get((x_, y_)))
+    return [v_ for v_ in seen_ if v_], (x_, y_)
+
+
+def check_essay(mod):
+    """作文の例文を調べ直す。(セット数, 不一致の一覧) を返す。"""
+    bad = []
+    for i_, st_ in enumerate(mod.SETS, 1):
+        q_ = st_['qs'][0]
+        m_, ess_ = q_['meta'], st_['essay']
+        sample = q_['ans']
+        body = sample.replace('\n', '')
+        lo_, hi_ = m_['lo'], m_['hi']
+        if ess_['topic'] != q_['q']:
+            bad.append((i_, 'お題が、問題文と合わない'))
+        if ess_['conds'][0] != f'{kan2(lo_)}字以上、{kan2(hi_)}字以内で書くこと。':
+            bad.append((i_, '字数の条件', ess_['conds'][0]))
+        if not lo_ <= len(body) <= hi_:
+            bad.append((i_, '例文の字数', len(body), lo_, hi_))
+        paras_ = sample.split('\n')
+        if len(paras_) != m_['paras'] or not all(paras_) or ('二段落' in ' '.join(ess_['conds'])) != (m_['paras'] == 2):
+            bad.append((i_, '段落の数', len(paras_), m_['paras']))
+        if FORBID & set(body):
+            bad.append((i_, '縦書きにしにくい文字', sorted(FORBID & set(body))))
+        if non_elem(body):
+            bad.append((i_, '小学校で習わない漢字', non_elem(body)))
+        sents_ = [x_ for x_ in body.split('。') if x_]
+        polite_ = [x_.endswith(POLITE) for x_ in sents_]
+        if m_['style'] == 'です' and not all(polite_) or m_['style'] == 'だ' and any(polite_):
+            bad.append((i_, '文末がそろっていない', m_['style'], [x_[-4:] for x_ in sents_]))
+        if (('「です・ます」' in ' '.join(ess_['conds'])) != (m_['style'] == 'です')) or (('「だ・である」' in ' '.join(ess_['conds'])) != (m_['style'] == 'だ')):
+            bad.append((i_, '文末の条件', m_['style']))
+        if m_.get('must_n'):
+            if sum(1 for w_ in m_['must'] if w_ in body) < m_['must_n']:
+                bad.append((i_, '指定された観点が足りない', m_['must']))
+        elif any(w_ not in body for w_ in m_['must']):
+            bad.append((i_, '使うことになっている言葉がない', [w_ for w_ in m_['must'] if w_ not in body]))
+        if m_.get('sentences') and body.count('。') != m_['sentences']:
+            bad.append((i_, '文の数', body.count('。'), m_['sentences']))
+        f_ = m_.get('facts')
+        if f_ and f_.get('counts'):                                            # 表の人数：合計・例文の人数・割合・いちばん多い／少ない
+            cnt_, mat_ = f_['counts'], ess_['material']['rows'][1:]
+            if sum(cnt_.values()) != f_['total'] or {r_[0]: int(r_[1].rstrip('人')) for r_ in mat_} != cnt_:
+                bad.append((i_, '表の人数', cnt_))
+            for w_, v_ in f_['say']:
+                if w_ not in body or w_ != kan2(v_) + '人' or v_ not in cnt_.values():
+                    bad.append((i_, '例文の人数', w_, v_))
+            w_, a_, b_ = f_['ratio']
+            if w_ not in body or w_ != kan2(a_ * 10 // b_) + '割' or a_ * 10 % b_ or a_ not in cnt_.values():
+                bad.append((i_, '割合', w_))
+            top_, low_ = max(cnt_, key=cnt_.get), min(cnt_, key=cnt_.get)
+            if body.find(top_) > body.find('いちばん多') or body.find(low_) > body.find('いちばん少') or 'いちばん多' not in body or 'いちばん少' not in body:
+                bad.append((i_, 'いちばん多い・少ない', top_, low_))
+        if f_ and f_.get('first'):                                             # 表の数字の差
+            row_ = ess_['material']['rows'][1][1:]
+            if (row_[0], row_[-1]) != (str(f_['first']), str(f_['last'])) or any(kan2(f_['first'] - f_['last']) != w_ or w_ not in body or v_ != f_['first'] - f_['last'] for w_, v_ in f_['say']):
+                bad.append((i_, '表の数字の差', row_, f_))
+        r_ = m_.get('route')
+        if r_:                                                                  # 道案内：地図の上で、実際に歩いてみる
+            fa_ = ess_['material']['args']
+            if r_['labels'] != {(a_, b_): n_ for a_, b_, n_ in fa_['labels']} or {frozenset(b_) for b_ in r_['blocked']} != {frozenset(b_) for b_ in fa_['blocked']} or r_['size'] != (fa_['cols'], fa_['rows']):
+                bad.append((i_, '地図が、経路のデータと合わない'))
+            seen_, end_ = walk(r_)
+            if end_ != r_['goal'] or seen_ is None or seen_[-1] != '図書館':
+                bad.append((i_, '経路がゴールにつかない', seen_, end_))
+            else:
+                pos_ = [body.find(v_) for v_ in r_['via']]
+                if any(p_ < 0 for p_ in pos_) or pos_ != sorted(pos_) or [v_ for v_ in seen_ if v_ in r_['via']] != r_['via']:
+                    bad.append((i_, '目じるしの順番', r_['via'], seen_))
+    return len(mod.SETS), bad
+
+
+n4_, bad4_ = check_essay(K4)
+eq(f'国4 作文{n4_}セット（字数・段落・文末・漢字・資料の数字・道案内の経路）の例文', bad4_, [])
 
 # ---------------- 形式（tools/tenri_rs_*.py をすべて） ----------------
 for f in sorted(Path(__file__).resolve().parent.glob('tenri_rs_*.py')):
