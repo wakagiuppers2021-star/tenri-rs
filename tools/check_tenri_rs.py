@@ -29,6 +29,8 @@ import tenri_rs_shakai5 as S5
 import tenri_rs_sansu4 as M4
 import tenri_rs_kokugo1 as K1
 import tenri_rs_kokugo2 as K2
+import tenri_rs_kokugo3 as K3
+import ja_grammar
 import world_outline
 from build_tenri_rs import SANKEN_ARROWS, SHAPES
 
@@ -2036,6 +2038,12 @@ def check_goku_set(mod):
 # ---------------- 国語・大問2（語句・熟語） ----------------
 n2_, bad2_ = check_goku_set(K2)
 eq(f'国2 語句・熟語{n2_}問（意味から熟語・組み立て・対義語・四字熟語・慣用句）の答え', bad2_, [])
+
+# ---------------- 国語・大問3（文法） ----------------
+# 品詞・活用形・活用の種類・文節・「の」の用法・「ない／そうだ／らしい」の識別などは、形態素解析（janome）で調べ直す。
+# 敬語・かなづかい・呼応・接続語のつながり方は、tools/ja_grammar.py の表と照合する。
+n3_, bad3_ = ja_grammar.check_bunpo(K3)
+eq(f'国3 文法{n3_}問（品詞・活用・文節・助詞・助動詞・敬語・修辞法・かなづかい・呼応）の答え', bad3_, [])
 
 # ---------------- 形式（tools/tenri_rs_*.py をすべて） ----------------
 for f in sorted(Path(__file__).resolve().parent.glob('tenri_rs_*.py')):

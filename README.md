@@ -10,6 +10,7 @@
 | `tools/build_tenri_rs.py` | PDFを作るスクリプト（レイアウト・図・検査） |
 | `tools/tenri_rs_<rika\|shakai\|sansu\|kokugo><番号>.py` | 大問ごとのデータ（`SETS` と `ANALYSIS`） |
 | `tools/check_tenri_rs.py` | 答えをデータとは別の計算・事実表で検算する |
+| `tools/ja_grammar.py` | 国語の文法の検算に使う、形態素解析（janome）と、学校文法への読みかえ・表 |
 | `tools/kanji_grade.py` | 漢字の学年配当（教育漢字1026字ほか）・部首番号・画数（KANJIDIC2、CC BY-SA 4.0）。国語の漢字の検算に使う |
 | `tools/world_outline.py` | 世界地図の海岸線・国境のデータ（Natural Earth 1:110m。パブリックドメイン）。`fig_world` が使う |
 | `tools/bundle_pdfs.py` | 大問ごとのPDFを、教科・種類（問題／解答解説／出題分析）ごとに1つにまとめる（しおり付き）。出力は `output/まとめ/` |
