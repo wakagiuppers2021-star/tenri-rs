@@ -307,6 +307,14 @@ for nt in fig5['nets']:
 eq('算2-5(8) 4つとも、立方体の展開図で、しるしが3つ', bad, [])
 eq('算2-5(8) 見取図と同じ立方体になる展開図（折りたたんで回して、しるしが重なる）', ans(M2, 5, 8), '・'.join(k for k, v in verdict.items() if v == 'ok'))
 eq('算2-5(8) 解説の、ちがう理由（ア・エ＝向きがぎゃく、イ＝向かい合う面）', [verdict['ア'], verdict['イ'], verdict['エ']], ['mirror', 'opposite', 'mirror'])
+rel = {}
+for nt in fig5['nets']:
+    pos = {s_: (r_, k_) for r_, k_, s_ in nt['marks']}
+    (rx, kx), (ro, ko), (rb, kb) = pos[cube['front']], pos[cube['top']], pos[cube['right']]
+    rel[nt['label']] = ((ro - rx, ko - kx), (rb - rx, kb - kx), (rb - ro, kb - ko))      # ○の位置（×から見て）・●の位置（×から見て）・●の位置（○から見て）
+eq('算2-5(8) 解説の、しるしの位置（ア：×の左が○・下が●／イ：○は上・●は下／ウ：○は上・●は右／エ：○は上・●は○の左）',
+   [rel['ア'][:2], rel['イ'][:2], rel['ウ'][:2], (rel['エ'][0], rel['エ'][2])],
+   [((0, -1), (1, 0)), ((-1, 0), (1, 0)), ((-1, 0), (0, 1)), ((-1, 0), (0, -1))])
 eq('算2-5(8) 問題文の○・×・●が、図のしるしと同じ', sorted(re.findall(r'[○×●]', q_text(M2, 5, 8).split('（')[0])), sorted(VIEW))
 
 # ---------------- 第06セット（2019） ----------------
