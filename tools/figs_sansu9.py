@@ -15,7 +15,7 @@ import math
 
 def register(B):
     colors, text, setline, tw, arrow = B.colors, B.text, B.setline, B.tw, B.arrow
-    INK, MUTED, LINE, PALE, ACCENT = B.INK, B.MUTED, B.LINE, B.PALE, B.ACCENT
+    INK, MUTED, LINE, PALE = B.INK, B.MUTED, B.LINE, B.PALE
     SHADE = colors.HexColor('#DCE2E6')
     _poly, _obl = B._poly, B._obl
 

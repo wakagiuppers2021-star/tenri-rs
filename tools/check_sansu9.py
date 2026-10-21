@@ -83,7 +83,6 @@ tri1 = [p for p in pan1['prims'] if p[0] == 'poly'][0][1]
 legs1 = sorted([math.dist(tri1[0], tri1[1]), math.dist(tri1[0], tri1[2])])
 assert (a1, b1) == tuple(legs1), '図1と問題文の長さが一致しない'
 assert {f'{a1}cm', f'{b1}cm'} <= {p[2] for p in pan1['prims'] if p[0] == 'text'}
-polys2 = [p[1] for p in pan2['prims'] if p[0] == 'poly']
 hat = [p[1] for p in pan2['prims'] if p[0] == 'poly' and p[2].get('fill') == 'hatch'][0]
 outer = [p[1] for p in pan2['prims'] if p[0] == 'poly' and len(p[1]) == 4 and p[2].get('w') == 1.5][0]
 tris = [p[1] for p in pan2['prims'] if p[0] == 'poly' and len(p[1]) == 3]
@@ -297,7 +296,6 @@ assert posP(Fraction(k7, 3600)) == posQ(Fraction(k7, 3600))                     
 assert set(g7['xticks']) == {0, pe[0], qe[0]} and str(D7) in g7['ylabels'][D7]
 
 # ================= 第08セット：白石と黒石 =================
-S8 = SETS[7]
 pat8 = fig_args(8)['pattern']
 reps8 = fig_args(8)['reps']
 assert all(pat8 != pat8[:p] * (len(pat8) // p) for p in range(1, len(pat8)) if len(pat8) % p == 0)     # くり返しの単位が、これより短くない
@@ -342,6 +340,12 @@ def all_paths(nx, ny):
 ok9 = [r for r in all_paths(nx9, ny9) if not any(frozenset((r[k], r[k + 1])) in blocked9 for k in range(len(r) - 1))]
 chk(9, 3, '道順の数', parse_ans(ans(M9, 9, 3)), (Fraction(len(ok9)), '通り'))
 chk(9, 4, 'Pを通る道順', parse_ans(ans(M9, 9, 4)), (Fraction(sum(1 for r in ok9 if lab9['P'] in r)), '通り'))
+# 解説に書いた、各交差点までの行き方の数（下の道から順に）を、1本ずつ数えなおした値と比べる
+ex93 = M9.SETS[8]['qs'][2]['ex']
+rows_ex = [[int(x) for x in r.split('・')] for r in re.findall(r'1(?:・\d+)+', ex93)]
+rows_cnt = [[sum(1 for r in all_paths(i, j) if not any(frozenset((r[k], r[k + 1])) in blocked9 for k in range(len(r) - 1))) for i in range(nx9 + 1)]
+            for j in range(1, ny9 + 1)]
+eq('算9-9(3) 解説の、交差点ごとの行き方の数', rows_ex, rows_cnt)
 assert len(blocked9) == 2 and all(abs(a[0] - b[0]) + abs(a[1] - b[1]) == 1 for a, b in map(tuple, blocked9))
 
 # ================= 第10セット：正方形をかさねた図形・ビー玉 =================
