@@ -36,37 +36,7 @@ import ja_read
 import world_outline
 from build_tenri_rs import SANKEN_ARROWS, SHAPES
 
-FAIL = []
-
-
-def ans(mod, s, q):
-    return mod.SETS[s - 1]['qs'][q - 1]['ans']
-
-
-def eq(label, got, want):
-    ok = got == want
-    print(('OK ' if ok else 'NG ') + label, '|', got, '|', want)
-    if not ok:
-        FAIL.append(label)
-
-
-def join(xs):
-    return '・'.join(xs)
-
-
-def choices(s):
-    """問題文の「ア 〜　イ 〜」から {記号: 中身} を読み取る。"""
-    return {m[0]: m[1] for m in re.findall(r'(?:^|\n|　)([アイウエオカキクケコ]) ([^\n　]+)', s)}
-
-
-def q_text(mod, s, q):
-    return mod.SETS[s - 1]['qs'][q - 1]['q']
-
-
-def num(x):
-    """小数第1位までの数を、答えの書き方（20.0→20、7.9→7.9）にそろえる。"""
-    x = round(x, 1)
-    return str(int(x)) if x == int(x) else str(x)
+from check_common import FAIL, ans, choices, eq, join, num, q_text            # 共通部品（tools/check_common.py）
 
 
 # ---------------- 理科・大問1 ----------------
@@ -2330,6 +2300,10 @@ def check_essay(mod):
 
 n4_, bad4_ = check_essay(K4)
 eq(f'国4 作文{n4_}セット（字数・段落・文末・漢字・資料の数字・道案内の経路）の例文', bad4_, [])
+
+# ---------------- 算数（大問ごとの検算：tools/check_sansu*.py） ----------------
+for f_ in sorted(Path(__file__).resolve().parent.glob('check_sansu*.py')):
+    importlib.import_module(f_.stem)
 
 # ---------------- 形式（tools/tenri_rs_*.py をすべて） ----------------
 for f in sorted(Path(__file__).resolve().parent.glob('tenri_rs_*.py')):

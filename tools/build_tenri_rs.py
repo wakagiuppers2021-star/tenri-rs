@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import importlib
 import math
+import re
 import sys
 from pathlib import Path
 
@@ -51,7 +52,35 @@ BOTTOM = 52          # 本文がこれより下に来たらはみ出し
 
 
 # ---------- 文字 ----------
+# 分数は、<1/2>（分子/分母）、帯分数は <5 3/4> と書くと、たてに分けて描く（算数）。
+FRAC = re.compile(r'<(?:(\d+) )?(\d+)/(\d+)>')
+FRACX = .5                                    # 分数をふくむ行に、文字の大きさの何倍の高さを足すか
+
+
+def has_frac(s):
+    return '<' in s and FRAC.search(s) is not None
+
+
+def _segs(s):
+    out, pos = [], 0
+    for m in FRAC.finditer(s):
+        if m.start() > pos:
+            out.append(('t', s[pos:m.start()]))
+        out.append(('f', m.group(1), m.group(2), m.group(3)))
+        pos = m.end()
+    if pos < len(s):
+        out.append(('t', s[pos:]))
+    return out
+
+
+def _fw(whole, n, d, size, bold=False):
+    fs = size * .85
+    return (pdfmetrics.stringWidth(whole, 'JPB' if bold else 'JP', size) + 1.5 if whole else 0) + max(len(n), len(d)) * fs * .56 + 4
+
+
 def tw(s, size, bold=False):
+    if '<' in s and FRAC.search(s):
+        return sum(pdfmetrics.stringWidth(t[1], 'JPB' if bold else 'JP', size) if t[0] == 't' else _fw(t[1], t[2], t[3], size, bold) for t in _segs(s))
     return pdfmetrics.stringWidth(s, 'JPB' if bold else 'JP', size)
 
 
@@ -59,11 +88,35 @@ def text(c, x, y, s, size=10, bold=False, color=INK, center=False):
     w = tw(s, size, bold)
     if center:
         x -= w / 2
+    fr = has_frac(s)
     if not DRY:
         c.setFillColor(color)
         c.setFont('JPB' if bold else 'JP', size)
-        c.drawString(x, y, s)
-        LAYOUT.append((c._filename, c._pageNumber, x, x + w, y - size * .2, y + size * .85, s))
+        if not fr:
+            c.drawString(x, y, s)
+        else:
+            xx, fs = x, size * .78
+            for t in _segs(s):
+                if t[0] == 't':
+                    c.setFont('JPB' if bold else 'JP', size)
+                    c.drawString(xx, y, t[1])
+                    xx += pdfmetrics.stringWidth(t[1], 'JPB' if bold else 'JP', size)
+                    continue
+                whole, n, d = t[1:]
+                if whole:
+                    c.setFont('JPB' if bold else 'JP', size)
+                    c.drawString(xx, y, whole)
+                    xx += pdfmetrics.stringWidth(whole, 'JPB' if bold else 'JP', size) + 1.5
+                fw = max(len(n), len(d)) * fs * .56 + 4
+                axis = y + size * .32
+                c.setFont('JPB' if bold else 'JP', fs)
+                c.drawCentredString(xx + fw / 2, axis + size * .16, n)
+                c.drawCentredString(xx + fw / 2, axis - size * .16 - fs * .72, d)
+                c.setLineWidth(.6)
+                c.setStrokeColor(color)
+                c.line(xx + 1, axis, xx + fw - 1, axis)
+                xx += fw
+        LAYOUT.append((c._filename, c._pageNumber, x, x + w, y - size * (.45 if fr else .2), y + size * (1.08 if fr else .85), s))
     return w
 
 
@@ -76,7 +129,8 @@ def wrap(s, width, size=10, bold=False):
     out = []
     for part in s.split('\n'):
         line = ''
-        for ch in part:
+        atoms = [m.group(0) for m in re.finditer(r'<(?:\d+ )?\d+/\d+>|.', part)] if '<' in part else part
+        for ch in atoms:
             if line and tw(line + ch, size, bold) > width:
                 if line[-1] in '（「『【〔' and len(line) > 1:
                     out.append(line[:-1])                          # 始めのかっこは、行末に残さない
@@ -116,8 +170,10 @@ def para(c, x, y, s, width, size=10, leading=None, color=INK, bold=False):
     leading = leading or size * 1.55
     lines = wrap(s, width, size, bold)
     for ln in lines:
+        fx = FRACX * size if has_frac(ln) else 0
+        y -= fx * .55
         text(c, x, y, ln, size, bold, color)
-        y -= leading
+        y -= leading + fx * .45
     return y, len(lines)
 
 
@@ -2094,7 +2150,6 @@ def marks(s):
 def draw_question(c, y, n, q, qs):
     kind = q['kind']
     lead = qs * 1.55
-    text(c, LM, y, f'({n})', qs, bold=True)
     tx = LM + 26
     if kind == 'short':
         width = RM - tx - 40 if q.get('wide') else 318            # wide：文を広くとり、解答らんは、右はしの1つだけ
@@ -2102,17 +2157,23 @@ def draw_question(c, y, n, q, qs):
         width = RM - tx
     plain, spans = marks(q['q'])
     lines = wrap(plain, width, qs)
+    text(c, LM, y - (FRACX * qs * .55 if lines and has_frac(lines[0]) else 0), f'({n})', qs, bold=True)
     pos = 0
+    off = 0                                             # 行の位置（分数をふくむ行は、高くとる）
     for i, ln in enumerate(lines):
-        text(c, tx, y - i * lead, ln, qs)
+        fx = FRACX * qs if has_frac(ln) else 0
+        off += fx * .55
+        text(c, tx, y - off, ln, qs)
         at = plain.index(ln, pos)
         for a, b in spans:                              # 下線
             a2, b2 = max(a, at), min(b, at + len(ln))
             if a2 < b2 and not DRY:
                 setline(c, .8)
-                c.line(tx + tw(ln[:a2 - at], qs), y - i * lead - 2.4, tx + tw(ln[:b2 - at], qs), y - i * lead - 2.4)
+                c.line(tx + tw(ln[:a2 - at], qs), y - off - 2.4, tx + tw(ln[:b2 - at], qs), y - off - 2.4)
         pos = at + len(ln)
-    last = y - (len(lines) - 1) * lead
+        last_off = off
+        off += lead + fx * .45
+    last = y - last_off
     if kind == 'short':
         if q.get('boxes'):                              # 名前つきの解答らんを、右から順にならべる
             x = RM
@@ -2519,10 +2580,22 @@ def check_text(pdf, mod, kind):
     for i, st in enumerate(mod.SETS):
         page = doc[i].get_text().replace('\n', '').replace(' ', '')
         for q in st['qs']:
-            key = (q['q'] if kind == 'q' else q['ex']).replace('\n', '').replace(' ', '').replace('{', '').replace('}', '')[:14]
-            if key not in page:
-                missing.append((i + 1, key))
+            src = q['q'] if kind == 'q' else q['ex']
+            for frag in FRAC.sub('\x00', src).split('\x00'):      # 分数は数字が別々に出るので、分数のあいだの文字ごとに確かめる
+                key = frag.replace('\n', '').replace(' ', '').replace('{', '').replace('}', '')[:14]
+                if key and key not in page:
+                    missing.append((i + 1, key))
     return missing
+
+
+def _load_figs():
+    """tools/figs_*.py の register(この module) を呼んで、図を FIGS にふやす。"""
+    me = sys.modules[__name__]
+    for f in sorted(Path(__file__).resolve().parent.glob('figs_*.py')):
+        importlib.import_module(f.stem).register(me)
+
+
+_load_figs()
 
 
 def main():
