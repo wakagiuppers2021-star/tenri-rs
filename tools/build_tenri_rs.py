@@ -1351,6 +1351,100 @@ def fig_rods(c, x, top, w, h, pts=(), length=30):
         text(c, X(d), by + 14, lab, 10.5, bold=True, center=True)
 
 
+def _badge(c, x, y, lab, r=7.5):
+    setline(c, .7, ACCENT)
+    c.setFillColor(colors.white)
+    c.circle(x, y, r, stroke=1, fill=1)
+    text(c, x, y - 3.6, lab, 10, bold=True, color=ACCENT, center=True)
+
+
+def fig_fuleaf(c, x, top, w, h):
+    """ふ入りの葉。A＝緑色の部分、B＝白い部分（ふ）、C＝アルミニウムはくでおおった緑色の部分。"""
+    cx, cy = x + w / 2, top - 60
+    x0, x1 = cx - 112, cx + 112
+    leaf = c.beginPath()
+    leaf.moveTo(x0, cy)
+    leaf.curveTo(x0 + 40, cy + 62, x1 - 60, cy + 54, x1, cy)
+    leaf.curveTo(x1 - 60, cy - 54, x0 + 40, cy - 62, x0, cy)
+    c.saveState()
+    c.clipPath(leaf, stroke=0, fill=0)
+    c.setFillColor(colors.HexColor('#CFE3CC'))
+    c.rect(x0, cy - 70, x1 - x0, 140, stroke=0, fill=1)
+    c.setFillColor(colors.white)
+    c.ellipse(cx + 8, cy + 6, cx + 92, cy + 60, stroke=0, fill=1)
+    c.restoreState()
+    setline(c, 1.1)
+    c.drawPath(leaf, stroke=1, fill=0)
+    setline(c, .7, MUTED)
+    c.line(x0 - 8, cy, x1 - 6, cy)
+    c.setFillColor(colors.HexColor('#B9C2C9'))
+    setline(c, 1)
+    c.rect(cx - 66, cy - 46, 38, 92, stroke=1, fill=1)
+    setline(c, .4, MUTED)
+    for k in range(0, 92, 8):
+        c.line(cx - 66, cy - 46 + k, cx - 28, cy - 46 + k + 8)
+    _badge(c, cx + 20, cy - 24, 'A')
+    _badge(c, cx + 52, cy + 28, 'B')
+    _badge(c, cx - 47, cy, 'C')
+    text(c, cx, top - h + 4, '灰色の部分はアルミニウムはく。白い部分は、ふ（葉緑体がない）。', 8.5, color=MUTED, center=True)
+
+
+def fig_river(c, x, top, w, h):
+    """山から海へ流れる川を上から見た図。ア・イ・ウは上流・中流・下流、A・Bは曲がりの両岸。"""
+    X = lambda u: x + 30 + (w - 60) * u
+    Y = lambda v: top - h + 8 + (h - 16) * v
+    pts = [(0.14, 0.90), (0.18, 0.76), (0.23, 0.62), (0.30, 0.45)]
+    for k in range(1, 26):
+        u = 0.30 + 0.42 * k / 25
+        pts.append((u, 0.45 + 0.13 * math.sin(2 * math.pi * (u - 0.30) / 0.42)))
+    pts += [(0.77, 0.34), (0.81, 0.22), (0.83, 0.12)]
+    c.setFillColor(colors.HexColor('#E3EBF0'))
+    c.rect(X(0.40), Y(0.0), X(1.0) - X(0.40), Y(0.12) - Y(0.0), stroke=0, fill=1)
+    text(c, X(0.96), Y(0.0) + 4, '海', 10, bold=True, color=ACCENT, center=True)
+    for ux in (0.02, 0.10):
+        c.setFillColor(SHADE)
+        c.drawPath(_poly(c, [(X(ux), Y(0.78)), (X(ux) + 22, Y(0.78)), (X(ux) + 11, Y(0.97))]), stroke=0, fill=1)
+    setline(c, 4, ACCENT)
+    p = c.beginPath()
+    p.moveTo(X(pts[0][0]), Y(pts[0][1]))
+    for u, v in pts[1:]:
+        p.lineTo(X(u), Y(v))
+    c.drawPath(p, stroke=1, fill=0)
+    uc = 0.30 + 0.42 / 4
+    for lab, dy in (('A', 12), ('B', -20)):
+        c.setFillColor(INK)
+        c.circle(X(uc), Y(0.58) + dy / 2 * .45, 1.8, stroke=0, fill=1)
+        text(c, X(uc), Y(0.58) + dy, lab, 11, bold=True, center=True)
+    for lab, u, v, dx, dy in (('ア', 0.14, 0.90, 12, -3), ('イ', 0.30, 0.45, -16, -3), ('ウ', 0.79, 0.28, 14, -3)):
+        _badge(c, X(u) + dx, Y(v) + dy, lab)
+
+
+def fig_microscope(c, x, top, w, h):
+    """顕微鏡。ア〜カの部分の名前を答える。"""
+    cx = x + w / 2 - 20
+    yb = top - h + 8
+    setline(c, 1)
+    c.setFillColor(PALE)
+    c.rect(cx - 46, yb, 92, 9, stroke=1, fill=1)
+    c.rect(cx + 22, yb + 9, 9, 104, stroke=1, fill=1)               # うで
+    c.rect(cx - 8, yb + 104, 39, 9, stroke=1, fill=1)
+    c.rect(cx - 8, yb + 58, 16, 54, stroke=1, fill=1)               # 鏡筒
+    c.rect(cx - 5, yb + 112, 10, 16, stroke=1, fill=1)              # 接眼レンズ
+    c.rect(cx - 4, yb + 50, 8, 8, stroke=1, fill=1)                 # 対物レンズ
+    c.rect(cx - 32, yb + 34, 64, 5, stroke=1, fill=1)               # ステージ
+    for dx in (-24, 20):
+        c.rect(cx + dx, yb + 39, 5, 3, stroke=1, fill=1)            # クリップ
+    c.circle(cx - 2, yb + 18, 8, stroke=1, fill=1)                  # 反射鏡
+    c.line(cx - 2, yb + 10, cx - 2, yb + 9)
+    c.circle(cx + 26, yb + 70, 7, stroke=1, fill=1)                 # 調節ねじ
+    for lab, (px, py), (tx, ty) in (('ア', (cx + 5, yb + 122), (cx + 56, yb + 128)), ('イ', (cx - 4, yb + 54), (cx - 52, yb + 62)),
+                                   ('ウ', (cx - 32, yb + 36), (cx - 62, yb + 42)), ('エ', (cx - 10, yb + 18), (cx - 56, yb + 20)),
+                                   ('オ', (cx + 33, yb + 70), (cx + 62, yb + 76)), ('カ', (cx + 25, yb + 41), (cx + 62, yb + 46))):
+        setline(c, .6, MUTED)
+        c.line(px, py, tx, ty)
+        _badge(c, tx + (6 if tx > cx else -6), ty, lab)
+
+
 FIGS = {'monochord': fig_monochord, 'circuits': fig_circuits, 'moon': fig_moon,
         'ice_graph': fig_ice_graph, 'pendulum': fig_pendulum,
         'strata': fig_strata, 'magnet': fig_magnet, 'lever': fig_lever, 'sanken': fig_sanken,
@@ -1358,7 +1452,8 @@ FIGS = {'monochord': fig_monochord, 'circuits': fig_circuits, 'moon': fig_moon,
         'world': fig_world, 'cloudmaps': fig_cloudmaps, 'seed': fig_seed, 'sao': fig_sao, 'stem': fig_stem,
         'circuitset': fig_circuitset, 'ammeter': fig_ammeter, 'circulation': fig_circulation, 'cans': fig_cans,
         'mirror': fig_mirror, 'digest': fig_digest, 'watercycle': fig_watercycle, 'pulleys': fig_pulleys, 'shadow': fig_shadow,
-        'leverbar': fig_leverbar, 'balance': fig_balance, 'cylinder': fig_cylinder, 'rods': fig_rods}
+        'leverbar': fig_leverbar, 'balance': fig_balance, 'cylinder': fig_cylinder, 'rods': fig_rods,
+        'fuleaf': fig_fuleaf, 'river': fig_river, 'microscope': fig_microscope}
 
 
 # ---------- 表・本文ブロック ----------

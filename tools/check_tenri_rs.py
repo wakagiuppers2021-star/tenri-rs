@@ -18,6 +18,7 @@ import tenri_rs_rika3 as R3
 import tenri_rs_rika4 as R4
 import tenri_rs_rika5 as R5
 import tenri_rs_rika6 as R6
+import tenri_rs_rika7 as R7
 import tenri_rs_shakai1 as S1
 import tenri_rs_shakai2 as S2
 import tenri_rs_shakai3 as S3
@@ -734,6 +735,103 @@ eq('理6-10(7) 食物連鎖', ans(R6, 10, 7), '→'.join(sorted(nm10, key=lambda
 eq('理6-10(9) 数が最も少ない', ans(R6, 10, 9), max(nm10, key=lambda k: depth10(nm10[k])))
 fossil10 = {'こはくの中の昆虫': True, '先月とれた貝がら': False, '石になった木の幹': True, '地層の中の恐竜の足あと': True}
 eq('理6-10(4) 化石でない', ans(R6, 10, 4), [k for k, v in choices(q_text(R6, 10, 4)).items() if not fossil10[v]][0])
+
+# ---------------- 理科・大問7 ----------------
+compass = ['北', '北東', '東', '南東', '南', '南西', '西', '北西']
+# 1 満月：かげは光の反対がわ。満月は真夜中に南中する。月齢から月の形を決める
+dir71 = max((d for d in compass if d in q_text(R7, 1, 1)), key=len)
+eq('理7-1(1) かげの方角', ans(R7, 1, 1), compass[(compass.index(dir71) + 4) % 8])
+hour71 = 22
+eq('理7-1(2) 満月の動き', ans(R7, 1, 2), [k for k, v in choices(q_text(R7, 1, 2)).items() if v.startswith('南の空へ') and hour71 < 24][0])
+eq('理7-1(3) 満月の並び', ans(R7, 1, 3), [k for k, v in choices(q_text(R7, 1, 3)).items() if v == '太陽・地球・月'][0])
+age71 = 29.5 / 2 + 7                                             # 満月の約7日後の月齢
+phase71 = {0: '新月', 7.4: '上弦の月', 14.8: '満月', 22.1: '下弦の月'}
+eq('理7-1(5) 満月の7日後', ans(R7, 1, 5), phase71[min(phase71, key=lambda a: abs(a - age71))])
+mag71 = {'ベガ': 0.03, 'アルタイル': 0.77, 'デネブ': 1.25}                 # 明るさ（小さいほど明るい）
+eq('理7-1(6) いちばん明るい', ans(R7, 1, 6), min(mag71, key=mag71.get))
+eq('理7-1(7) 星の動き', ans(R7, 1, 7), [f'{360 // 24 * h}度' for h in (1, 4)])
+eq('理7-1(8) デネブ', ans(R7, 1, 8), {'ベガ': 'こと座', 'アルタイル': 'わし座', 'デネブ': 'はくちょう座'}['デネブ'])
+
+# 2 ふ入りの葉：緑色で日光が当たった部分にだけ、でんぷんができる
+reg72 = {'A': (True, True), 'B': (False, True), 'C': (True, False)}       # (緑色か, 日光が当たったか)
+eq('理7-2(2) 青むらさき色', ans(R7, 2, 2), join(k for k, (g_, l_) in reg72.items() if g_ and l_))
+diff72 = lambda a_, b_: ['緑色の部分' if reg72[a_][0] != reg72[b_][0] else '', '日光' if reg72[a_][1] != reg72[b_][1] else '']
+eq('理7-2(4) AとC', ans(R7, 2, 4), [x for x in diff72('A', 'C') if x][0])
+eq('理7-2(5) AとB', ans(R7, 2, 5), [x for x in diff72('A', 'B') if x][0])
+
+# 3 ボーリング：標高−深さ。3点から傾きを求める
+rows = R7.SETS[2]['table']['rows']
+sf73 = {r[0]: int(r[1]) for r in zip(rows[0][1:], rows[1][1:], rows[2][1:])}
+dp73 = {r[0]: int(r[2]) for r in zip(rows[0][1:], rows[1][1:], rows[2][1:])}
+z73 = {k: sf73[k] - dp73[k] for k in 'ABC'}
+eq('理7-3(2) 標高', ans(R7, 3, 2), [f'{z73[k]}m' for k in 'ABC'])
+dx73, dy73 = -(z73['B'] - z73['A']), -(z73['C'] - z73['A'])                 # 低くなる向き（東・北）
+low73 = ('東' if dx73 > 0 else '西') if dy73 == 0 else ('北' if dy73 > 0 else '南') + ('' if dx73 == 0 else '東' if dx73 > 0 else '西')
+eq('理7-3(3) 低くなる方角', ans(R7, 3, 3), low73)
+cover73 = lambda n: '快晴' if n <= 1 else '晴れ' if n <= 8 else 'くもり'
+eq('理7-3(6) 雲量6', ans(R7, 3, 6), [k for k, v in choices(q_text(R7, 3, 6)).items() if v == cover73(6)][0])
+eq('理7-3(8) 上弦の月', ans(R7, 3, 8), f'約{round(7.4)}日後')
+
+# 4 ふりこ：条件を1つだけ変えて比べる。周期＝10往復の時間÷10
+rows = R7.SETS[3]['table']['rows']
+cond74 = {r[0]: [int(v) for v in r[1:]] for r in rows[1:4]}
+t74 = [float(v) for v in rows[4][1:]]
+names74 = rows[0][1:]
+fac = {'おもりの重さ': 'おもりの重さ(g)', 'ふれはば': 'ふれはば(度)', '糸の長さ': '糸の長さ(cm)'}
+def only_diff(f):
+    hits = [names74[j] for j in range(1, 4) if all((cond74[g_][j] != cond74[g_][0]) == (g_ == f) for g_ in cond74)]
+    assert len(hits) == 1, (f, hits)
+    return hits[0]
+eq('理7-4(1) 条件を比べる', ans(R7, 4, 1), [only_diff(f) for f in fac.values()])
+period = [t / 10 for t in t74]
+eq('理7-4(3) 1往復', ans(R7, 4, 3), [f'{period[0]:.1f}秒', f'{period[3]:.1f}秒'])
+assert abs(period[0] - period[3] * math.sqrt(cond74['糸の長さ(cm)'][0] / cond74['糸の長さ(cm)'][3])) < 1e-9
+eq('理7-4(4) 225cm', ans(R7, 4, 4), f'{10 * t74[3] / 10 * math.sqrt(225 / cond74["糸の長さ(cm)"][3]):.1f}秒')
+eq('理7-4(5) アの往復数', ans(R7, 4, 5), f'{num(12 / period[0])}往復')
+meet74 = sum(1 for k in range(1, 13) if (Fraction(k) % Fraction(str(period[0])) == 0) and (Fraction(k) % Fraction(str(period[3])) == 0))
+eq('理7-4(6) いっしょにもどる', ans(R7, 4, 6), f'{meet74}回')
+
+# 5 ヒトのたんじょう
+eq('理7-5(6) 38週', ans(R7, 5, 6), f'約{38 * 7}日')
+
+# 6 こん虫
+meta76 = {'カマキリ': '不完全', 'モンシロチョウ': '完全', 'セミ': '不完全', 'カブトムシ': '完全', 'トンボ': '不完全'}
+eq('理7-6(8) 完全変態', ans(R7, 6, 8), join(k for k, v in choices(q_text(R7, 6, 8)).items() if meta76[v] == '完全'))
+song76 = {'カナカナ': 'ヒグラシ', 'ミーンミーン': 'ミンミンゼミ', 'ジリジリ': 'アブラゼミ'}
+eq('理7-6(4) セミの鳴き声', ans(R7, 6, 4), [song76[k.replace('と鳴く', '')] for k in R7.SETS[5]['qs'][3]['labels']])
+
+# 7 燃える条件と気体：表の割合から
+rows = R7.SETS[6]['table']['rows']
+tb77 = {r[0]: {g_: float(v.rstrip('%')) for g_, v in zip(rows[0][1:], r[1:])} for r in rows[1:]}
+eq('理7-7(3) 二酸化炭素', ans(R7, 7, 3), f'{num(tb77["はいた息"]["二酸化炭素"] / tb77["空気"]["二酸化炭素"])}倍')
+eq('理7-7(4) 酸素の量', ans(R7, 7, 4), f'{50 * tb77["空気"]["酸素"] / 100:g}L')
+eq('理7-7(5) 変わらない気体', ans(R7, 7, 5), [g_ for g_ in tb77['空気'] if tb77['空気'][g_] == tb77['はいた息'][g_]][0])
+lack77 = {'びんをかぶせた': '②', '水をかけた': '③', 'ガスを止めた': '①', 'ふたをした': '②'}
+eq('理7-7(2) 消えた理由', ans(R7, 7, 2), [[v for k, v in lack77.items() if k in lab][0] for lab in R7.SETS[6]['qs'][1]['labels']])
+
+# 8 ヘチマ：実ができるのは、めばなに花粉がついたとき
+rows = R7.SETS[7]['table']['rows'][1:]
+for r in rows:
+    pollen = '花粉をつけた' in r[2] or 'かけなかった' in r[2]
+    assert (r[1] == 'めばな' and pollen) == (r[3] == 'できた'), r
+
+# 9 川：図の上から下へ、上流・中流・下流。曲がりの外側がけずられる
+v_mark = {'ア': 0.90, 'イ': 0.45, 'ウ': 0.28}
+order9 = {k: ['上流', '中流', '下流'][i] for i, k in enumerate(sorted(v_mark, key=lambda k: -v_mark[k]))}
+eq('理7-9(1) 上流・中流・下流', ans(R7, 9, 1), [order9[k] for k in 'アイウ'])
+eq('理7-9(2) 川はばが広い', ans(R7, 9, 2), [k for k, v in order9.items() if v == '下流'][0])
+curv = lambda u: 0.13 * math.sin(2 * math.pi * (u - 0.30) / 0.42)
+uc9 = 0.30 + 0.42 / 4
+d2 = curv(uc9 + 1e-3) + curv(uc9 - 1e-3) - 2 * curv(uc9)                      # 山（上に出っぱる）なら負
+side9 = {'A': 1, 'B': -1}                                                  # 川の線の上がわ・下がわ
+eq('理7-9(5) 外側（けずられる）', ans(R7, 9, 5), [k for k, s in side9.items() if s * d2 < 0][0])
+eq('理7-9(6) 内側（たい積）', ans(R7, 9, 6), [k for k, s in side9.items() if s * d2 > 0][0])
+
+# 10 顕微鏡：図の高さの順で、部分の名前を決める
+h10 = {'ア': 122, 'イ': 54, 'ウ': 36, 'エ': 18, 'オ': 70, 'カ': 41}
+part10 = {122: '接眼レンズ', 70: '調節ねじ', 54: '対物レンズ', 41: 'クリップ', 36: 'ステージ', 18: '反射鏡'}
+eq('理7-10(1) 顕微鏡の部分', ans(R7, 10, 1), [part10[h10[k]] for k in 'アイウエオカ'])
+eq('理7-10(2) 倍率', ans(R7, 10, 2), f'{10 * 40}倍')
 
 # ---------------- 社会・大問1 ----------------
 capital = {'青森県': '青森市', '静岡県': '静岡市', '京都府': '京都市', '香川県': '高松市', '新潟県': '新潟市',
