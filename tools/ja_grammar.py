@@ -133,17 +133,19 @@ def bunsetsu(s):
 # ---------------------------------------------------------------------------------------------
 # 検算：tools/tenri_rs_kokugo3.py（文法）の答えを、形態素解析と表から調べ直す
 # ---------------------------------------------------------------------------------------------
-CONJ_REL = {'だから': '順接', 'しかし': '逆接', 'また': '並立（つけくわえ）', 'つまり': '説明', 'ところで': '転換', 'または': '選択', 'そして': '並立（つけくわえ）'}
+CONJ_REL = {'なぜなら': '説明（理由）', 'だから': '順接', 'しかし': '逆接', 'また': '並立（つけくわえ）', 'つまり': '説明', 'ところで': '転換', 'または': '選択', 'そして': '並立（つけくわえ）'}
 KEIGO = {'おっしゃる': 'ア', '拝見する': 'イ', 'ます': 'ウ', 'いらっしゃる': 'ア', '申し上げる': 'イ', 'お読みになる': 'ア', 'お持ちする': 'イ',
          'です': 'ウ', 'お帰りになる': 'ア', 'うかがう': 'イ', 'お貸しくださる': 'ア'}
 KEIGO_CONV = {('食べる', '尊敬'): '召し上がる', ('来る', '尊敬'): 'いらっしゃる', ('会う', '謙譲'): 'お目にかかる', ('読む', '尊敬'): 'お読みになる',
               ('飲む', '尊敬'): '召し上がる', ('知っている', '尊敬'): 'ご存じだ', ('もらう', '謙譲'): 'いただく', ('言う', '謙譲'): '申し上げる',
               ('見る', '謙譲'): '拝見する', ('する', '尊敬'): 'なさる', ('行く', '謙譲'): 'うかがう', ('くれる', '尊敬'): 'くださる',
               ('言う', '尊敬'): 'おっしゃる'}
+GITAI = {'うろうろ', 'ざあざあ', 'わくわく', 'くたくた', 'ぐんぐん', 'ぴかぴか', 'ふわふわ', 'にこにこ', 'ごろごろ', 'ひりひり', 'のろのろ'}   # 擬態語・擬音語（作問のとき JMdict で確認）
+IG_RIGHT = {'道に迷って、〔　〕と歩き回った。': 'うろうろ', '雨が〔　〕と降っている。': 'ざあざあ', '合格の知らせに、胸が〔　〕した。': 'わくわく', '走りすぎて、体が〔　〕になった。': 'くたくた'}
 KANA_TABLE = {'けふ': 'きょう', 'いふ': 'いう', 'かをり': 'かおり', 'こほり': 'こおり', 'ゐなか': 'いなか', 'おほきい': 'おおきい'}
 KOUOU = {'決して': 'ない', 'たぶん': 'だろう', 'もし': 'たら', 'まるで': 'よう', 'どうして': 'か', 'たとえ': 'ても'}
 LETTERS = {'NO': 'アイウエ', 'POS': 'アイウエオカキクケ', 'AUX': 'アイウエオ', 'KID': 'アイウ', 'RHET': 'アイウエオ', 'FORM': 'アイウエオカ', 'KIND': 'アイウエオ',
-           'PT': 'アイウエ', 'CJ': 'アイウエ', 'KOU': 'アイウエ', 'NAI': 'アイ', 'SOU': 'アイ', 'YOU': 'アイウ', 'RAS': 'アイ', 'COMP': 'アイウエオ'}
+           'NAI2': 'アイウエ', 'RHS': 'アイウエ', 'IG': 'アイウエ', 'KOU2': 'アイウエ', 'PT': 'アイウエ', 'CJ': 'アイウエ', 'KOU': 'アイウエ', 'NAI': 'アイ', 'SOU': 'アイ', 'YOU': 'アイウ', 'RAS': 'アイ', 'COMP': 'アイウエオ'}
 
 
 def marks(s):
@@ -216,7 +218,7 @@ def check_bunpo(mod):
                 parts = bunsetsu(_plain_(sl))
                 if '／'.join(parts) != sl:
                     bad.append((tag, '文節の区切り', parts, sl))
-                subj = next((p for p in parts if _last_particle(p) in ('が', 'は', 'も')), None)
+                subj = next((p for p in reversed(parts) if _last_particle(p) in ('が', 'は', 'も')), None)      # 文全体の主語は、最後の「が・は・も」の文節
                 pred = _strip(parts[-1])
                 if (_strip(subj or ''), pred) != (m_['subj'], m_['pred']) or a_ != f'{m_["subj"]}　{m_["pred"]}':
                     bad.append((tag, '主語・述語', subj, pred, m_['subj'], m_['pred']))
@@ -303,11 +305,10 @@ def check_bunpo(mod):
                     continue
                 last = tokens(_strip(words[idx]))[-1]
                 heads = [_head(w) for w in words]
-                if last.pos == '連体詞' or (last.pos in ('動詞', '形容詞') and last.infl_form == '基本形') or last.surface == 'の' or \
-                        (last.pos == '助動詞' and last.surface in ('た', 'だ')) or last.pos == '形容詞':
-                    want = words[idx + 1]
-                else:
-                    want = next((w for w, h in zip(words[idx + 1:], heads[idx + 1:]) if h in ('動詞', '形容詞', '連体詞', 'エ')), None)
+                if last.pos in ('連体詞', '副詞') or (last.pos == '助詞' and last.surface == 'の') or _is_attr(words, idx):
+                    want = words[idx + 1]                                           # 連体修飾（あとの名詞）・副詞（すぐあとの語）
+                else:                                                               # 連用修飾：あとの、述語（連体修飾の形でない用言）
+                    want = next((w for k, w in enumerate(words[idx + 1:], idx + 1) if heads[k] in ('動詞', '形容詞', 'エ') and not _is_attr(words, k)), None)
                 if want is None or _strip(want) != a_ or a_ != q_['ans']:
                     bad.append((tag, '係り受け', words[idx], want, a_))
                 if q_['q'] != sl.replace('／', ''):
@@ -364,9 +365,90 @@ def check_bunpo(mod):
                     got = 'ア' if pv.pos in ('動詞', '形容詞', '助動詞') else 'イ' if pv.pos == '名詞' and nx.pos == '名詞' else None
                     if got != a_:
                         bad.append((tag, '「らしい」の識別', got, a_, toks))
+            # ----- 現代かなづかいの誤り -----
+            elif t_ == 'KM':
+                if (m_['wrong'] not in m_['sent'] or hira(m_['kanji']) != m_['right'] or m_['wrong'] == m_['right'] or a_ != m_['right']
+                        or hira(m_['kanji']) == m_['wrong'] or q_['q'] != f'「{m_["sent"]}」' or m_['sent'].count(m_['wrong']) != 1):
+                    bad.append((tag, 'かなづかいの誤り', m_['wrong'], m_['right'], hira(m_['kanji'])))
+            # ----- 「ない」の使い方（助動詞・形容詞・補助形容詞） -----
+            elif t_ == 'NAI2':
+                lines = qt_.split('\n')
+                got = []
+                for ln in [lines[0]] + [x[2:] for x in lines[1:]]:
+                    pl, sp = marks(ln)
+                    tk = tokens(pl)
+                    k = next((x for x, t in enumerate(tk) if sp and t.start == sp[0][0]), None)
+                    if k is None or tk[k].surface != 'ない':
+                        got.append(None)
+                        continue
+                    prev = tk[k - 1]
+                    if tk[k].pos == '助動詞' and prev.pos == '動詞':
+                        got.append('aux')                                           # 動詞の未然形につく打ち消し
+                    elif tk[k].pos == '形容詞':
+                        got.append('adj')                                           # 「ある」の反対（存在しない）
+                    elif tk[k].pos == '助動詞' and (prev.pos == '形容詞' or (prev.surface == 'は' and tk[k - 2].surface == 'で')):
+                        got.append('hojo')                                          # 「〜くない」「〜ではない」（補助形容詞）
+                    else:
+                        got.append(None)
+                tags = [t for _, t in m_['opts']]
+                if (got != [m_['ttag']] + tags or [k for k, t in zip('アイウエ', tags) if t == m_['ttag']] != [a_] or len(m_['opts']) != 4
+                        or lines[0] != m_['target']):
+                    bad.append((tag, '「ない」の使い方', got, m_['ttag'], tags, a_))
+            # ----- 同じ表現技法の文を選ぶ -----
+            elif t_ == 'RHS':
+                lines = qt_.split('\n')
+                texts = [t for t, _ in m_['opts']]
+                tags = [t for _, t in m_['opts']]
+
+                def figure(sentence, tg):
+                    tk = [x for x in tokens(sentence) if x.pos != '記号']
+                    simile = any(x.surface in ('よう', 'みたい') for x in tk)
+                    return (tg == '直喩') == simile and (tg != '体言止め' or tk[-1].pos == '名詞')
+                if (lines[0] != f'「{m_["target"]}」' or lines[1:] != [f'{k} {t}' for k, t in zip('アイウエ', texts)] or len(m_['opts']) != 4
+                        or [k for k, t in zip('アイウエ', tags) if t == m_['ttag']] != [a_] or not figure(m_['target'], m_['ttag'])
+                        or not all(figure(t, g) for t, g in m_['opts'])):
+                    bad.append((tag, '表現技法の選択', m_['ttag'], tags, a_))
+            # ----- 言いかえ（空らんに入る言葉） -----
+            elif t_ == 'RP':
+                filled = m_['s2'].replace('〔　〕', a_)
+                tk = tokens(filled)
+                bases = {x.base for x in tk}
+                if (len(a_) != m_['n'] or '〔　〕' not in m_['s2'] or any(b not in bases for b in m_['must'])
+                        or qt_ != f'ア　{m_["s1"]}\nイ　{m_["s2"]}（{"一二三四五六七八"[m_["n"] - 1]}字）'):
+                    bad.append((tag, '言いかえ', a_, m_['must'], sorted(bases)))
+            # ----- 擬態語・擬音語の選択 -----
+            elif t_ == 'IG':
+                opts = m_['opts']
+                row = qt_.split('\n')[1]
+                right = opts['アイウエ'.index(a_)]
+                if (row != '　'.join(f'{k} {o}' for k, o in zip('アイウエ', opts)) or len(set(opts)) != 4 or '〔　〕' not in qt_.split('\n')[0]
+                        or right not in GITAI or any(o not in GITAI for o in opts) or IG_RIGHT.get(qt_.split('\n')[0]) != right):
+                    bad.append((tag, '擬態語の選択', opts, a_))
+            # ----- 呼応する言葉の選択（とうてい…ない・まるで…ようだ・たぶん…だろう） -----
+            elif t_ == 'KOU2':
+                opts = m_['opts']
+                row = qt_.split('\n')[1]
+                has = {'neg': lambda o: any(x.pos == '助動詞' and x.surface in ('ない', 'ず', 'ぬ') for x in tokens(o)),
+                       'simile': lambda o: any(x.surface == 'よう' for x in tokens(o)),
+                       'guess': lambda o: 'だろう' in o}[m_['kind']]
+                key = {'neg': ('とうてい', '決して', '少しも'), 'simile': ('まるで',), 'guess': ('たぶん', 'おそらく')}[m_['kind']]
+                if (row != '　'.join(f'{k} {o}' for k, o in zip('アイウエ', opts)) or [k for k, o in zip('アイウエ', opts) if has(o)] != [a_]
+                        or not any(w in qt_.split('\n')[0] for w in key) or len(set(opts)) != 4):
+                    bad.append((tag, '呼応', m_['kind'], opts, a_))
             else:
                 bad.append((tag, '未対応の種類', t_))
     return n_, bad
+
+
+def _is_attr(words, i):
+    """文節 words[i] が、あとの名詞をくわしくする形（連体修飾）か。"""
+    last = tokens(_strip(words[i]))[-1]
+    noun_next = i + 1 < len(words) and _head(words[i + 1]) == '名詞'
+    if last.pos == '連体詞':
+        return True
+    if noun_next and ((last.pos == '助動詞' and last.surface in ('な', 'た', 'だ')) or (last.pos in ('形容詞', '動詞') and last.infl_form == '基本形')):
+        return True
+    return False
 
 
 def _plain_(s):
