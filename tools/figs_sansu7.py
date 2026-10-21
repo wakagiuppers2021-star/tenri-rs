@@ -84,7 +84,7 @@ def register(B):
             setline(c, .6, MUTED)
             c.circle(cx, cy, r - d - 3.5, stroke=1, fill=0)
             text(c, cx, cy + 1, names[k], 11, bold=True, center=True)
-            text(c, cx, cy - 11, f'{n}こ', 8, center=True)
+            text(c, cx, cy - 11, f'{n}個', 8, center=True)
         if mark is not None:
             k = mark
             c.setFillColor(INK)

@@ -159,6 +159,7 @@ tot = int(re.search(r'長さ(\d+)cm', q35).group(1))
 mult = int(re.search(r'(\d+)倍', q35).group(1))
 diff = int(re.search(r'より(\d+)cm長い', q35).group(1))
 sols = [(s, 3 * s - diff, 3 * s) for s in range(1, tot) if mult * s - diff > s and s + (mult * s - diff) + mult * s == tot]
+eq('算2-3(5) 切り分ける本数が3（長さの、3つの式と合う）', int(re.search(r'(\d+)本に切り分け', q35).group(1)), 3)
 eq('算2-3(5) 3本のロープ：1通りに決まり、もっとも長いロープ', (len(sols), sols[0][2] if sols else None), (1, A1(3, 5)))
 teams = int(Q(3, 6)[0])
 eq('算2-3(6) 総当たり戦', A1(3, 6), len(list(itertools.combinations(range(teams), 2))))
@@ -428,8 +429,11 @@ eq('算2-9(2) <8/3>時間は何時間何分', A(9, 2), [Fr(int(hrs)), (hrs - int
 add1, mul1, add2, mul2, res = [int(x) for x in Q(9, 3)]
 wrong = [x for x in range(0, 1000) if (x + add2) * mul2 == res]
 eq('算2-9(3) 逆算（まちがえた式から、ある数を求め、正しい式で計算）', A1(9, 3), [(x + add1) * mul1 for x in wrong][0])
-cards = [int(x) for x in re.findall(r'「(\d)」', q_text(M2, 9, 4))]
-ev = {a_ * 10 + b_ for a_, b_ in itertools.permutations(cards, 2) if a_ != 0 and (a_ * 10 + b_) % 2 == 0}
+q94 = q_text(M2, 9, 4)
+cards = [int(x) for x in re.findall(r'「(\d)」', q94)]
+n_cards, pick_, ndig = [int(re.search(pat, q94).group(1)) for pat in (r'(\d+)枚のカード', r'から(\d+)枚を選んで', r'(\d+)けたの整数')]
+eq('算2-9(4) カードの枚数・選ぶ枚数・けた数', (len(cards), pick_, ndig), (n_cards, 2, 2))
+ev = {int(''.join(map(str, p_))) for p_ in itertools.permutations(cards, pick_) if p_[0] != 0 and p_[-1] % 2 == 0}
 eq('算2-9(4) 0〜4のカードで2けたの偶数', A1(9, 4), len(ev))
 num_, den_ = [int(x) for x in re.findall(r'<(\d+)/(\d+)>', q_text(M2, 9, 5))[0]]
 pos_ = int(re.search(r'第(\d+)位', q_text(M2, 9, 5)).group(1))
@@ -455,7 +459,7 @@ eq('算2-10(3) 定価1500円の3割引き', A1(10, 3), price * (10 - wari) / 10)
 sc = [int(x) for x in re.findall(r'(\d+)点', q_text(M2, 10, 4))]
 known, avg = sc[:-1], sc[-1]
 n_people = int(re.search(r'(\d+)人のテスト', q_text(M2, 10, 4)).group(1))
-eq('算2-10(4) 平均点から□点（人数が、点数の数と合う）', (A1(10, 4), n_people), ([x for x in range(0, 101) if (sum(known) + x) == avg * n_people][0], len(known) + 1))
+eq('算2-10(4) 平均点から□点（人数が、点数の数と合う）', (A1(10, 4), n_people, int(re.findall(r'(\d+)人の', q_text(M2, 10, 4))[-1])), ([x for x in range(0, 101) if (sum(known) + x) == avg * n_people][0], len(known) + 1, len(known) + 1))
 kcnt, total = [int(x) for x in Q(10, 5)]
 eq('算2-10(5) 連続する3つの奇数の和が117', A1(10, 5), [a_ for a_ in range(1, 200, 2) if sum(a_ + 2 * k for k in range(kcnt)) == total][0])
 p1, e1, p2, e2 = [int(x) for x in re.search(r'1人に(\d+)個ずつ配ると(\d+)個あまり、(\d+)個ずつ配ると(\d+)個たりません', q_text(M2, 10, 6)).groups()]

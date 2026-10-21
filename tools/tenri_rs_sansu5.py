@@ -18,14 +18,12 @@ _S3 = math.sqrt(3)
 
 # ---- 第02セット：斜線部分の面積3つ（2023年度の形）の図 ----
 FIG2 = dict(name='s5_plane', h=156, args=dict(panels=[
-    dict(cap='(1)', wt=1.2, prims=[
+    dict(cap='(1)', wt=1.2, padx=30, prims=[
         ('poly', [(0, 0), (16, 0), (16, 10), (0, 10)], dict(fill='hatch')),
         ('poly', [(0, 2), (0, 5), (16, 9), (16, 6)], dict(fill='white')),
         ('dim', (0, 0), (16, 0), '16cm', dict(side=-1, off=9)),
-        ('dim', (0, 0), (0, 2), '2cm', dict(side=1, off=8)),
+        ('dim', (16, 0), (16, 10), '10cm', dict(side=-1, off=9)),
         ('dim', (0, 2), (0, 5), '3cm', dict(side=1, off=8)),
-        ('dim', (16, 6), (16, 9), '3cm', dict(side=-1, off=8)),
-        ('dim', (16, 9), (16, 10), '1cm', dict(side=-1, off=8)),
     ]),
     dict(cap='(2)', wt=1, prims=[
         ('circle', (0, 0), 6, dict(fill='hatch')),
@@ -34,7 +32,7 @@ FIG2 = dict(name='s5_plane', h=156, args=dict(panels=[
         ('seg', (-6, 0), (6, 0), dict(w=.7, dash=(3, 2))),
         ('lbl', (-4, 0), '4cm', dict(dy=5, size=8)),
         ('lbl', (2, 0), '8cm', dict(dy=5, size=8)),
-        ('dim', (-6, -6), (6, -6), '12cm', dict(side=-1, off=-1)),
+        ('dim', (-6, -6), (6, -6), '12cm', dict(side=-1, off=9)),
     ]),
     dict(cap='(3)', wt=1, prims=[
         ('poly', [(0, 0), (12, 0), (12, 12), (0, 12)], dict(fill='hatch')),
@@ -46,7 +44,7 @@ FIG2 = dict(name='s5_plane', h=156, args=dict(panels=[
 
 # ---- 第04セット：斜線部分の面積3つ（2021年度の形）の図 ----
 FIG4 = dict(name='s5_plane', h=150, args=dict(panels=[
-    dict(cap='(1)', wt=1.05, sub='方眼の1めもりは1cm', prims=[
+    dict(cap='(1)', wt=1.1, sub='方眼の1めもりは1cm', prims=[
         ('grid', (0, 0), (7, 6), 1, {}),
         ('poly', [(1, 0), (6, 2), (3, 6)], dict(fill='hatch', w=1.5)),
     ]),
@@ -58,26 +56,25 @@ FIG4 = dict(name='s5_plane', h=150, args=dict(panels=[
         ('arc', (0, 0), 6, 0, 180, {}), ('arc', (0, 0), 2, 0, 180, {}),
         ('arc', (8, 0), 6, 180, 360, {}), ('arc', (8, 0), 2, 180, 360, {}),
         ('seg', (-6, 0), (-2, 0), {}), ('seg', (10, 0), (14, 0), {}),
-        ('seg', (0, 0), (-4.2426, 4.2426), dict(w=.7, dash=(3, 2))),
-        ('seg', (8, 0), (8 + 1.4142, -1.4142), dict(w=.7, dash=(3, 2))),
-        ('lbl', (-2.4, 2.9), '6cm', dict(size=8.5, bg=True)),
-        ('lbl', (8.6, -0.5), '2cm', dict(size=8.5, bg=True)),
+        ('seg', (0, 0), (0, 6), dict(w=.7, dash=(3, 2))),
+        ('lbl', (0, 1), '2cm', dict(size=8, dx=-12, bg=True)),
+        ('lbl', (0, 4), '6cm', dict(size=8, dx=-12, bg=True)),
     ]),
-    dict(cap='(3)', wt=1.05, prims=[
+    dict(cap='(3)', wt=1.1, padx=30, prims=[
         ('poly', [(0, 0), (12, 0), (12, 9), (0, 9)], {}),
         ('poly', [(0, 9), (8, 0), (12, 6)], dict(fill='hatch')),
         ('pt', (0, 9), 'A', dict(dx=-8, dy=5)), ('pt', (0, 0), 'B', dict(dx=-8, dy=-9)),
         ('pt', (12, 0), 'C', dict(dx=8, dy=-9)), ('pt', (12, 9), 'D', dict(dx=8, dy=5)),
         ('pt', (8, 0), 'E', dict(dx=0, dy=-11, dot=True)), ('pt', (12, 6), 'F', dict(dx=9, dy=0, dot=True)),
         ('dim', (0, 0), (8, 0), '8cm', dict(side=-1, off=20)),
-        ('dim', (12, 0), (12, 6), '6cm', dict(side=-1, off=24)),
+        ('dim', (12, 0), (12, 6), '6cm', dict(side=-1, off=17)),
         ('dim', (0, 0), (0, 9), '9cm', dict(side=1, off=8)),
         ('dim', (0, 9), (12, 9), '12cm', dict(side=1, off=9)),
     ]),
 ]))
 
 # ---- 第05セット：立体の体積（2020年度の形）の図 ----
-FIG5 = dict(name='s5_solids', h=170, args=dict(solids=[
+FIG5 = dict(name='s5_solids', h=176, args=dict(solids=[
     dict(kind='prism', pts=[(0, 0), (9, 0), (0, 4)], d=6,
          dims=[((0, 0, 0), (9, 0, 0), '9cm', 0, -9), ((0, 0, 0), (0, 0, 4), '4cm', -14, 0), ((9, 0, 0), (9, 6, 0), '6cm', 10, -6)],
          cap=['直角三角形と長方形で', 'かこまれた立体']),
@@ -86,14 +83,14 @@ FIG5 = dict(name='s5_solids', h=170, args=dict(solids=[
     dict(kind='prism', pts=[(0, 0), (8, 0), (8, 3), (4, 6), (0, 6)], d=5,
          dash=[((4, 6), (8, 6)), ((8, 6), (8, 3))],
          dims=[((0, 0, 0), (8, 0, 0), '8cm', 0, -9), ((0, 0, 0), (0, 0, 6), '6cm', -14, 0), ((8, 0, 0), (8, 5, 0), '5cm', 10, -6),
-               ((4, 0, 6), (8, 0, 6), '4cm', 0, 8), ((8, 0, 3), (8, 0, 6), '3cm', 12, 0)],
+               ((4, 0, 6), (8, 0, 6), '4cm', 0, 9), ((8, 0, 3), (8, 0, 6), '3cm', 13, 0)],
          cap=['直方体の角を、', 'まっすぐに切りとった立体']),
 ]))
 
 # ---- 第06セット：斜線部分の面積4つ（2019年度の形）の図 ----
 _C = math.degrees(math.atan2(3, -4))        # 点Mから点Aへの向き（143.13度）
 FIG6 = dict(name='s5_plane', h=150, args=dict(panels=[
-    dict(cap='(1)', wt=1, prims=[
+    dict(cap='(1)', wt=.95, prims=[
         ('sector', (0, 0), 7, 0, 90, dict(fill='hatch', nostroke=True)),
         ('sector', (0, 0), 7, 180, 270, dict(fill='hatch', nostroke=True)),
         ('sector', (0, 0), 4, 0, 90, dict(fill='white', nostroke=True)),
@@ -102,10 +99,10 @@ FIG6 = dict(name='s5_plane', h=150, args=dict(panels=[
         ('sector', (0, 0), 4, 270, 360, dict(fill='hatch', nostroke=True)),
         ('circle', (0, 0), 7, {}), ('circle', (0, 0), 4, {}),
         ('seg', (-7, 0), (7, 0), {}), ('seg', (0, -7), (0, 7), {}),
-        ('lbl', (-2, 0), '4cm', dict(size=8, bg=True)),
-        ('lbl', (5.5, 0), '3cm', dict(size=8, bg=True)),
+        ('lbl', (-2, 0), '4cm', dict(size=7.5, bg=True)),
+        ('lbl', (5.5, 0), '3cm', dict(size=7.5, bg=True)),
     ]),
-    dict(cap='(2)', wt=1, prims=[
+    dict(cap='(2)', wt=.95, prims=[
         ('and', [('sector', (6, 0), 6, 0, 180), ('sector', (0, 6), 6, -90, 90)], dict(fill='hatch')),
         ('and', [('sector', (0, 6), 6, -90, 90), ('sector', (6, 12), 6, 180, 360)], dict(fill='hatch')),
         ('and', [('sector', (6, 12), 6, 180, 360), ('sector', (12, 6), 6, 90, 270)], dict(fill='hatch')),
@@ -115,19 +112,19 @@ FIG6 = dict(name='s5_plane', h=150, args=dict(panels=[
         ('arc', (6, 12), 6, 180, 360, {}), ('arc', (12, 6), 6, 90, 270, {}),
         ('dim', (0, 0), (12, 0), '12cm', dict(side=-1, off=9)),
     ]),
-    dict(cap='(3)', wt=1.2, prims=[
+    dict(cap='(3)', wt=1.45, prims=[
         ('sector', (4, 0), 4, 180, 360, dict(fill='hatch', nostroke=True)),
         ('sector', (0, 3), 3, 90, 270, dict(fill='hatch', nostroke=True)),
         ('sector', (4, 3), 5, _C, _C + 180, dict(fill='white', nostroke=True)),
         ('arc', (4, 0), 4, 180, 360, {}), ('arc', (0, 3), 3, 90, 270, {}), ('arc', (4, 3), 5, _C, _C + 180, {}),
         ('poly', [(0, 0), (8, 0), (0, 6)], {}),
         ('rt', (0, 0), (1, 0), (0, 1)),
-        ('pt', (0, 6), 'A', dict(dx=-4, dy=8)), ('pt', (8, 0), 'B', dict(dx=9, dy=5)), ('pt', (0, 0), 'C', dict(dx=-8, dy=-2)),
-        ('dim', (0, 0), (0, 6), '6cm', dict(side=-1, off=8)),
-        ('dim', (0, 0), (8, 0), '8cm', dict(side=1, off=9)),
-        ('dim', (0, 6), (8, 0), '10cm', dict(side=1, off=9)),
+        ('pt', (0, 6), 'A', dict(dx=0, dy=9)), ('pt', (8, 0), 'B', dict(dx=9, dy=4)), ('pt', (0, 0), 'C', dict(dx=-9, dy=-7)),
+        ('lbl', (0, 3.4), '6cm', dict(size=8, dx=15, bg=True)),
+        ('lbl', (4, 0), '8cm', dict(size=8, dy=9, bg=True)),
+        ('lbl', (4, 3), '10cm', dict(size=8, dx=15, dy=11, bg=True)),
     ]),
-    dict(cap='(4)', wt=1.35, prims=[
+    dict(cap='(4)', wt=1.3, prims=[
         ('poly', [(0, 0), (12, 0), (12, 8), (0, 8)], dict(fill='hatch', nostroke=True)),
         ('sector', (0, 4), 4, 90, 270, dict(fill='hatch', nostroke=True)),
         ('sector', (12, 4), 4, -90, 90, dict(fill='hatch', nostroke=True)),
@@ -138,14 +135,14 @@ FIG6 = dict(name='s5_plane', h=150, args=dict(panels=[
         ('arc', (0, 4), 4, 90, 270, {}), ('arc', (12, 4), 4, -90, 90, {}),
         ('arc', (0, 4), 2, 90, 270, {}), ('arc', (12, 4), 2, -90, 90, {}),
         ('dim', (0, 8), (12, 8), '12cm', dict(side=1, off=8)),
-        ('dim', (-4, 0), (-4, 8), '8cm', dict(side=1, off=8)),
-        ('dim', (-2, 4), (0, 4), '2cm', dict(side=1, off=0)),
+        ('dim', (16, 0), (16, 8), '8cm', dict(side=-1, off=8)),
+        ('lbl', (-3, 4), '2cm', dict(size=7.5)),
     ]),
 ]))
 
 # ---- 第08セット：正三角形と正方形（2017年度の形）の図 ----
 _E8 = (12 + 6 * _S3, 6)
-FIG8 = dict(name='s5_plane', h=150, args=dict(panels=[
+FIG8 = dict(name='s5_plane', h=196, args=dict(panels=[
     dict(wt=1, sub='三角形CDEは正三角形', prims=[
         ('poly', [(0, 0), (12, 0), _E8], dict(fill='hatch', nostroke=True)),
         ('poly', [(0, 12), (0, 0), (12, 0), (12, 12)], {}),
@@ -170,23 +167,20 @@ FIG9 = dict(name='s5_plane', h=64, args=dict(panels=[
 ]))
 
 # ---- 第10セット：円の転がり（2015年度の形）と平行四辺形（2014年度の形）の図 ----
-_PB = [(0, 0), (15, 0), (19, 16), (4, 16)]         # B, C, D, A
-
-
 def _opt(lab, P, dx, dy, rect):
-    return dict(cap=lab, rect=rect, prims=[
+    return dict(rect=rect, padx=14, pady=10, prims=[
         ('circle', (0, 0), 2, {}), ('circle', (-3, 0), 1, {}),
-        ('lbl', (0, 0), 'B', dict(size=10, bold=True)), ('lbl', (-3, 0), 'A', dict(size=9, bold=True, dx=0, dy=0)),
+        ('lbl', (-4.8, 2.0), lab, dict(size=10, bold=True)),
+        ('lbl', (0, 0), 'B', dict(size=10, bold=True)), ('lbl', (-3, 0), 'A', dict(size=8.5, bold=True)),
         ('pt', P, 'P', dict(dot=True, dx=dx, dy=dy))])
 
 
-FIG10 = dict(name='s5_plane', h=192, args=dict(panels=[
+FIG10 = dict(name='s5_plane', h=204, args=dict(panels=[
     dict(cap='図1', rect=(0, 0, .42, .6), prims=[
         ('circle', (0, 0), 2, {}), ('circle', (0, 3), 1, {}),
         ('lbl', (0, 0), 'B', dict(size=10, bold=True)), ('lbl', (0, 3), 'A', dict(size=9, bold=True)),
         ('pt', (0, 4), 'P', dict(dot=True, dx=0, dy=9)),
         ('carrow', (0, 0), 4.6, 105, 160, dict(w=1.1)),
-        ('lbl', (-2.0, -2.2), '半径2cm', dict(size=8, anchor='r')), ('lbl', (-2.0, -3.4), '半径1cm', dict(size=8, anchor='r')),
     ]),
     dict(cap='図2', rect=(.44, 0, 1, .6), prims=[
         ('poly', [(4, 16), (0, 0), (15, 0), (19, 16)], {}),
@@ -210,7 +204,7 @@ SETS = [
         lead='あるクラスの生徒9人が、ソフトボール投げをしました。下の表は、9人の記録です。次の問いに答えなさい。',
         table=dict(rows=[['番号'] + [str(i) for i in range(1, 10)], ['記録（m）', '26', '15', '22', '30', '25', '20', '28', '24', '26']],
                    colw=[70] + [44] * 9),
-        space=62,
+        space=74,
         qs=[
             dict(kind='short', q='9人の記録の平均は、何mですか。', unit='m',
                  ans='24m', ex='9人の記録の合計は、26＋15＋22＋30＋25＋20＋28＋24＋26＝216（m）。平均は、216÷9＝24（m）'),
@@ -347,7 +341,7 @@ SETS = [
     dict(
         year=2015, note='2015・2014年度 大問5の出題形式を参考にした独自教材（過去問の転載ではありません）',
         title='円の転がりと平行四辺形',
-        lead='図1のように、半径2cmの円Bと、半径1cmの円Aが、ふれ合っています。円Aは、円Bのまわりを、すべらないように矢印の向きに転がって、1周して、もとの位置にもどります。図2は、面積が240cm²の平行四辺形ABCDで、BC＝15cmです。点Eは辺AD上の点で、BEとACが交わる点をFとします。円周率は3.14として計算しなさい。',
+        lead='図1のように、半径2cmの円Bと半径1cmの円Aが、ふれ合っています。円Aは、円Bのまわりを、すべらないように矢印の向きに転がって、1周してもとの位置にもどります。図2は、面積が240cm²の平行四辺形ABCDで、点Eは辺AD上にあり、BEとACが交わる点をFとします。円周率は3.14とします。',
         fig=FIG10,
         space=36,
         qs=[

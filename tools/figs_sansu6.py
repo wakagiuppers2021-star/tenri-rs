@@ -291,8 +291,9 @@ def register(B):
         lab(c, P(L / 2, 0, 0)[0], P(0, 0, 0)[1] - 11, f'{L:g}cm')
         lab(c, P(L, D / 2, 0)[0] + 5, P(L, D / 2, 0)[1] - 8, a['dlab'], anchor='l')
         lab(c, P(0, 0, H / 2)[0] - 4, P(0, 0, H / 2)[1], f'{H:g}cm', anchor='r')
-        lab(c, P(x0, y1, H)[0] - 5, P(x0, y1, H)[1] + 6, f'穴は{x1 - x0:g}cm×{y1 - y0:g}cm', 8, 'r')
-        lab(c, P(x0, y0, zf + pd / 2)[0] - 4, P(x0, y0, zf + pd / 2)[1], f'深さ{pd:g}cm', 8, 'r', halo=WHITE)
+        if a.get('pit_labels'):
+            lab(c, P(x0, y1, H)[0] - 5, P(x0, y1, H)[1] + 6, f'穴は{x1 - x0:g}cm×{y1 - y0:g}cm', 8, 'r')
+            lab(c, P(x0, y0, zf + pd / 2)[0] - 4, P(x0, y0, zf + pd / 2)[1], f'深さ{pd:g}cm', 8, 'r', halo=WHITE)
 
     def sh_triprism(c, px, pw, rtop, rh, a):
         """前の面が直角三角形（横 b・たて hh、直角は左下）の三角柱。おくゆき d。"""
@@ -306,8 +307,11 @@ def register(B):
         rt_mark(c, P(0, 0, 0), (1, 0), (0, 1))
         lab(c, P(b / 2, 0, 0)[0], P(0, 0, 0)[1] - 11, f'{b:g}cm')
         lab(c, P(0, 0, hh / 2)[0] - 4, P(0, 0, hh / 2)[1], f'{hh:g}cm', anchor='r')
-        if a.get('slant'):
-            lab(c, P(b / 2, 0, hh / 2)[0] + 4, P(b / 2, 0, hh / 2)[1] + 6, a['slant'], anchor='l', halo=SHADE)
+        if a.get('slant'):                                       # 斜辺の長さ：斜辺のすぐ上（かげの面の中）
+            m = P(b / 2, 0, hh / 2)
+            nx, ny = hh, b
+            nl = math.hypot(nx, ny)
+            lab(c, m[0] + nx / nl * 13, m[1] + ny / nl * 13, a['slant'], 8.5, halo=SHADE)
         lab(c, P(b, d / 2, 0)[0] + 5, P(b, d / 2, 0)[1] - 8, f'{d:g}cm', anchor='l')
 
     def sh_fnotch(c, px, pw, rtop, rh, a):
@@ -385,21 +389,21 @@ def register(B):
 
     # ------------------------------------------------------------------ 規則性・カード・展開図・木
     def fig_checkers(c, x, top, w, h, ns=(1, 2, 3, 4), cell=13, gap=26, dots=True):
-        """n番目は、たて n・よこ n+1 の長方形に、白黒の正方形を市松もようにならべた図（左上は黒）。"""
+        """n番目は、たて n・よこ n+1 の長方形に、白黒の正方形を市松もようにならべた図（左上は黒）。下をそろえてならべる。"""
         total = sum((n + 1) * cell for n in ns) + gap * (len(ns) - 1) + (30 if dots else 0)
         cx = x + (w - total) / 2
-        ty = top - 6
+        base = top - h + 22
         for n in ns:
             for r in range(n):
                 for k in range(n + 1):
                     black = (r + k) % 2 == 0
                     c.setFillColor(INK if black else WHITE)
                     setline(c, .7)
-                    c.rect(cx + k * cell, ty - (r + 1) * cell, cell, cell, stroke=1, fill=1)
-            lab(c, cx + (n + 1) * cell / 2, top - h + 8, f'{n}番目', 9.5)
+                    c.rect(cx + k * cell, base + (n - 1 - r) * cell, cell, cell, stroke=1, fill=1)
+            lab(c, cx + (n + 1) * cell / 2, base - 11, f'{n}番目', 9.5)
             cx += (n + 1) * cell + gap
         if dots:
-            lab(c, cx - gap + 6, ty - ns[-1] * cell / 2, '…', 12, 'l')
+            lab(c, cx - gap + 6, base + ns[-1] * cell / 2, '…', 12, 'l')
 
     def fig_cards(c, x, top, w, h, digits=(0, 1, 1, 2, 3)):
         """数字のカードを、よこに1列。"""

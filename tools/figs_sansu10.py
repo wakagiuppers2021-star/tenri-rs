@@ -33,6 +33,11 @@ def move_curve(leg, gap, rw, v, n=60):
     return pts
 
 
+def move_ticks(leg, gap, rw, v):
+    """第01セットのグラフの、x軸の目もり（重なり始め・平らな部分の終わり・重なりがなくなる）。"""
+    return gap / v, (gap + rw) / v, (gap + rw + leg) / v
+
+
 def register(B):
     colors, text, setline, tw, arrow = B.colors, B.text, B.setline, B.tw, B.arrow
     INK, MUTED, LINE, ACCENT, PALE, SHADE = B.INK, B.MUTED, B.LINE, B.ACCENT, B.PALE, B.SHADE
@@ -139,7 +144,7 @@ def register(B):
         text(c, rectx + rw * sc / 2, base + leg * sc / 2 - 3, '長方形', 9, color=MUTED, center=True)
         # 右：グラフ
         pts = move_curve(leg, gap, rw, v)
-        t0, t2, t3 = gap / v, (gap + rw) / v, (gap + rw + leg) / v
+        t0, t2, t3 = move_ticks(leg, gap, rw, v)
         ymax = leg * leg / 2
         gx, gy = x + pw + 40, top - h + 28
         gwid = w - pw - 40 - 52
@@ -157,16 +162,16 @@ def register(B):
             setline(c, 1)
             c.line(xx, y0 - 4, xx, y0 + 4)
             text(c, xx, y0 - 15, lab, 9.5, bold=True, center=True)
-        # 点P・Q（出発のようす）
+        # 点P・Q（出発のとき：Pは点A、Qは点B）
         c.setFillColor(INK)
-        c.circle(xa + 40, y0, 2.6, stroke=0, fill=1)
-        c.circle(xb - 40, y0, 2.6, stroke=0, fill=1)
-        arrow(c, xa + 46, y0 + 8, xa + 76, y0 + 8, 5, 1.2, ACCENT)
-        arrow(c, xb - 46, y0 + 8, xb - 76, y0 + 8, 5, 1.2, ACCENT)
-        text(c, xa + 40, y0 + 12, f'P', 9.5, bold=True, center=True)
-        text(c, xb - 40, y0 + 12, f'Q', 9.5, bold=True, center=True)
-        text(c, xa + 79, y0 + 4, f'毎秒{p}cm', 8, color=ACCENT)
-        text(c, xb - 79 - tw(f'毎秒{q}cm', 8), y0 + 4, f'毎秒{q}cm', 8, color=ACCENT)
+        c.circle(xa, y0, 2.8, stroke=0, fill=1)
+        c.circle(xb, y0, 2.8, stroke=0, fill=1)
+        arrow(c, xa + 6, y0 + 9, xa + 40, y0 + 9, 5, 1.2, ACCENT)
+        arrow(c, xb - 6, y0 + 9, xb - 40, y0 + 9, 5, 1.2, ACCENT)
+        text(c, xa, y0 + 13, 'P', 9.5, bold=True, center=True)
+        text(c, xb, y0 + 13, 'Q', 9.5, bold=True, center=True)
+        text(c, xa + 44, y0 + 6, f'毎秒{p}cm', 8, color=ACCENT)
+        text(c, xb - 44 - tw(f'毎秒{q}cm', 8), y0 + 6, f'毎秒{q}cm', 8, color=ACCENT)
         yy = y0 - 27
         arrow(c, xa, yy, xb, yy, 4, .7, MUTED)
         arrow(c, xb, yy, xa, yy, 4, .7, MUTED)
@@ -230,7 +235,7 @@ def register(B):
         arrow(c, tx - 7, base + 1, tx - 7, base + tank_h * k - 1, 4, .7, MUTED)
         arrow(c, tx - 7, base + tank_h * k - 1, tx - 7, base + 1, 4, .7, MUTED)
         text(c, tx - 11 - tw(f'{tank_h}cm', 8.5), base + tank_h * k / 2 - 3, f'{tank_h}cm', 8.5)
-        text(c, tx + tank_w * k / 2 + ox / 2, base - 13, '水そう ア', 9.5, bold=True, center=True)
+        text(c, tx + tank_w * k / 2 + ox / 2, base - 13, '水そう（ア）', 9.5, bold=True, center=True)
         # ブロック
         cs = cube * k
         bx = tx + tank_w * k + ox + 30
@@ -239,16 +244,16 @@ def register(B):
         arrow(c, bx, yy, bx + cs, yy, 4, .7, MUTED)
         arrow(c, bx + cs, yy, bx, yy, 4, .7, MUTED)
         text(c, bx + cs / 2, yy - 11, f'{cube}cm', 8.5, center=True)
-        text(c, bx + len(cols) * cs / 2, base - 33, 'ブロック イ', 9.5, bold=True, center=True)
+        text(c, bx + len(cols) * cs / 2, base - 33, 'ブロック（イ）', 9.5, bold=True, center=True)
         # グラフ
         gx = x + 268 + 22
         gy = top - h + 34
-        draw_graph(c, gx, gy, w - 268 - 22 - 40, h - 34 - 26, xmax, ymax, [dict(pts=[tuple(p) for p in pts])],
+        draw_graph(c, gx, gy, w - 268 - 22 - 58, h - 34 - 26, xmax, ymax, [dict(pts=[tuple(p) for p in pts])],
                    xticks=xticks, yticks=yticks, guides=guides, xlab='時間(分)', ylab='水面の高さ(cm)', ylab_dx=-20)
         # (最後の点の高さまでの点線)
         top_y = max(v for _, v in pts)
         setline(c, .7, MUTED, (2, 2))
-        c.line(gx, gy + (h - 34 - 26) * top_y / ymax, gx + (w - 268 - 22 - 40) * pts[-1][0] / xmax, gy + (h - 34 - 26) * top_y / ymax)
+        c.line(gx, gy + (h - 34 - 26) * top_y / ymax, gx + (w - 268 - 22 - 58) * pts[-1][0] / xmax, gy + (h - 34 - 26) * top_y / ymax)
         c.setDash()
 
     B.FIGS['s10_graph'] = fig_graph

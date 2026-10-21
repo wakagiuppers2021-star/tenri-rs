@@ -429,7 +429,14 @@ for si, st in enumerate(M7.SETS, 1):
             run, pre, post = m.group(0), q['ex'][m.start() - 1] if m.start() else '', q['ex'][m.end()] if m.end() < len(q['ex']) else ''
             if '＝' not in run or re.match(r'[A-Za-zアイウエオ□]', pre) or re.match(r'[A-Za-zアイウエオ□]', post):
                 continue
-            sides = [x for x in run.split('＝') if x]
+            sides = run.split('＝')
+            if sides[0] and sides[0][0] in '＋－×÷':                                 # 文字の式の続き（「面積＝底辺×6÷2＝…」など）は、はじめの辺をのぞく
+                sides = sides[1:]
+            if sides and sides[-1] and sides[-1][-1] in '＋－×÷':
+                sides = sides[:-1]
+            sides = [x for x in sides if x]
+            if len(sides) < 2:
+                continue
             try:
                 vs = {val(x_) for x_ in sides}
             except Exception:

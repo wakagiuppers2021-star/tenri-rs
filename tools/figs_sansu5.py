@@ -276,12 +276,12 @@ def register(B):
     # ---------- 立体の見取図 ----------
     KX, KY = .42, .3
 
-    def prism_extent(s):
-        xs, zs = [p[0] for p in s['pts']], [p[1] for p in s['pts']]
-        return max(xs) + KX * s['d'], max(zs) + KY * s['d']
-
-    def pipe_extent(s):
-        return 2 * s['R'] + .0, s['h'] + .32 * s['R']
+    def extents(s):
+        """(横の長さcm, たての長さcm, 上に足す余白pt)"""
+        if s['kind'] == 'prism':
+            xs, zs = [p[0] for p in s['pts']], [p[1] for p in s['pts']]
+            return max(xs) + KX * s['d'], max(zs) + KY * s['d'], 12
+        return 2 * s['R'], s['h'] + 2 * .32 * s['R'], 26
 
     def draw_prism(c, ox, oy, sc, s):
         P = lambda x, y, z: (ox + (x + KX * y) * sc, oy + (z + KY * y) * sc)
@@ -334,30 +334,29 @@ def register(B):
         iw = tw(s['dlabel'], 8.5)
         c.rect(cx - iw / 2 - 1, ytop - 5, iw + 2, 10, stroke=0, fill=1)
         text(c, cx, ytop - 3, s['dlabel'], 8.5, center=True)
-        dimline(c, (cx - rx, ytop + ry), (cx + rx, ytop + ry), s['Dlabel'], -1, 9, 9)
+        dimline(c, (cx - rx, ytop + ry), (cx + rx, ytop + ry), s['Dlabel'], 1, 9, 9)
         dimline(c, (cx + rx, ybot), (cx + rx, ytop), s['hlabel'], -1, 10, 9)
 
     def fig_solids(c, x, top, w, h, solids=()):
         n = len(solids)
         cw = w / n
         capn = max(len(s.get('cap', [])) for s in solids)
-        gh = h - 24 - 12 * capn
+        base = top - h + 12 * capn + 4 + 16                       # 立体の底（正面の、下の辺）の高さ
+        avail = (top - 24) - base
         sc = 1e9
         for s in solids:
-            ew, eh = prism_extent(s) if s['kind'] == 'prism' else pipe_extent(s)
-            sc = min(sc, (cw - 52) / ew, (gh - 26) / eh)
+            ew, eh, tp = extents(s)
+            sc = min(sc, (cw - 44) / ew, (avail - tp) / eh)
         for k, s in enumerate(solids):
             px = x + k * cw
             text(c, px + 4, top - 11, f'({k + 1})', 10, bold=True)
-            ew, eh = prism_extent(s) if s['kind'] == 'prism' else pipe_extent(s)
-            oyb = top - 24 - gh + (gh - eh * sc) / 2
+            ew, eh, tp = extents(s)
             if s['kind'] == 'prism':
-                ox = px + (cw - ew * sc) / 2 + 4
-                draw_prism(c, ox, oyb, sc, s)
+                draw_prism(c, px + (cw - ew * sc) / 2, base, sc, s)
             else:
-                draw_pipe(c, px + cw / 2 - 8, oyb, sc, s)
+                draw_pipe(c, px + cw / 2 - 8, base + .32 * s['R'] * sc, sc, s)
             for j, ln in enumerate(s.get('cap', [])):
-                text(c, px + cw / 2, top - h + 6 + 11.5 * (len(s['cap']) - 1 - j), ln, 8.5, center=True)
+                text(c, px + cw / 2, top - h + 6 + 12 * (len(s['cap']) - 1 - j), ln, 8.5, center=True)
 
     B.FIGS['s5_plane'] = fig_plane
     B.FIGS['s5_solids'] = fig_solids
