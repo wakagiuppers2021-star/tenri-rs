@@ -171,19 +171,11 @@ def labels_ok(prims):
     return bad
 
 
-def near(a, b, tol):
-    return abs(a - b) <= tol
-
-
 def check_area(label, got_str, formula_true, formula_314, area_true):
     """答えの文字列・公式（円周率3.14）・図の座標から数え直した面積（本物の円周率）を、照合する。"""
     eq(f'{label} 答え', got_str, fmt(formula_314, 'cm²'))
     ok = abs(area_true - formula_true) < max(.01, formula_true * 3e-4)
     eq(f'{label} 図の座標から数えた面積（{area_true:.3f}）と公式（{formula_true:.3f}）', ok, True)
-
-
-def solid_cm(text):
-    return cm_numbers(text)
 
 
 # ====================================================================== 第01セット：平均と中央値
@@ -203,6 +195,10 @@ srt10 = sorted(vals1 + [cand1[0]])
 med10 = Fraction(srt10[4] + srt10[5], 2)
 eq('算5-1(4) 中央値（10人）', ans(M5, 1, 4), f'{float(med10):g}m')
 assert srt10[4] != srt10[5]
+n11 = int(re.search(r'ちょうど(\d+)m', q_text(M5, 1, 5)).group(1))
+cand11 = [x for x in range(0, 200) if Fraction(sum(srt10) + x, 11) == n11]
+assert len(cand11) == 1
+eq('算5-1(5) Bさんの記録', ans(M5, 1, 5), f'{cand11[0]}m')
 
 # ====================================================================== 第02セット：斜線部分の面積（長方形・円・正方形）
 p2 = panels(2)
@@ -217,7 +213,7 @@ assert band2[0][0] == band2[1][0] == 0 and band2[2][0] == band2[3][0] == 16 and 
 slope1 = (band2[3][1] - band2[0][1]) / 16
 slope2 = (band2[2][1] - band2[1][1]) / 16
 assert abs(slope1 - slope2) < 1e-12                                                                      # 帯の2本の線が平行
-assert cm_numbers(q_text(M5, 2, 1)) == sorted([10, 16, 3, 3])
+assert cm_numbers(q_text(M5, 2, 1)) == sorted([10, 16, 3])
 ar21 = hatched_area(p2[0]['prims'])
 check_area('算5-2(1) 長方形から帯', ans(M5, 2, 1), 16 * 10 - 3 * 16, Fraction(16 * 10 - 3 * 16), ar21)
 # (2) 円の中の2つの円
@@ -251,6 +247,11 @@ dc4 = Fraction(dc4, 10) + Fraction(int(re.search(r'割(\d)分引き', q34).group
 cost4 = [c for c in range(1, 200000) if Fraction(c) * (1 + Fraction(mk4, 10)) * (1 - dc4) - c == pf4]       # 定価＝仕入れ値×(1＋利益の割合)、売り値＝定価×(1－割引き)
 assert len(cost4) == 1
 eq('算5-3(4) 別の品物の仕入れ値', ans(M5, 3, 4), f'{cost4[0]}円')
+q35 = q_text(M5, 3, 5)
+u5, n5, mk5, nd5, dc5 = (int(re.search(p, q35).group(1)) for p in (r'1個(\d+)円', r'(\d+)個仕入れ', r'(\d)割の利益', r'そのうち(\d+)個は定価', r'定価の(\d)割引き'))
+list5 = Fraction(u5) * (1 + Fraction(mk5, 10))
+profit5 = sum((list5 if k < nd5 else list5 * (1 - Fraction(dc5, 10))) - u5 for k in range(n5))             # 1個ずつ、売り値－仕入れ値を足す
+eq('算5-3(5) 100個の利益', ans(M5, 3, 5), f'{profit5}円')
 
 # ====================================================================== 第04セット：斜線部分の面積（方眼・半円・長方形）
 p4 = panels(4)
@@ -420,6 +421,10 @@ b74 = int(re.search(r'Bだけで(\d+)分間', q_text(M5, 7, 4)).group(1))
 sol74 = [y for y in range(0, 200) if b74 * rB + y * (rA + rB) == 1]
 assert len(sol74) == 1
 eq('算5-7(4) 2台の時間', ans(M5, 7, 4), f'{sol74[0]}分間')
+tot75 = int(re.search(r'全部で(\d+)分', q_text(M5, 7, 5)).group(1))
+sol75 = [x for x in range(0, tot75 + 1) if x * rA + (tot75 - x) * rB == 1]                          # Aだけでx分、のこりはBだけ
+assert len(sol75) == 1
+eq('算5-7(5) Aだけの時間', ans(M5, 7, 5), f'{sol75[0]}分間')
 
 # ====================================================================== 第08セット：正三角形と正方形
 pr8 = panels(8)[0]['prims']
@@ -450,6 +455,7 @@ assert abs(angle(Dp8, Ap8, Ep8) - 150) < 1e-9 and abs(angle(Ep8, Dp8, Ap8) - 15)
 lead9 = S(9)['lead']
 a9, b9 = (int(x) for x in re.findall(r'「(\d)」のカード', lead9)[:2])
 assert (a9, b9) == (3, 8) and math.gcd(a9, b9) == 1
+assert [pr[2] for pr in panels(9)[0]['prims'] if pr[0] == 'lbl'][:2] == [str(a9), str(b9)]                   # 図のカードの数字
 reach = lambda n: any((n - b9 * j) >= 0 and (n - b9 * j) % a9 == 0 for j in range(n // b9 + 1))        # nが、a9の倍数とb9の倍数の和になるか
 sums4 = {a9 * i + b9 * (4 - i) for i in range(5)}
 eq('算5-9(1) 4枚の和', ans(M5, 9, 1), f'{len(sums4)}通り')
