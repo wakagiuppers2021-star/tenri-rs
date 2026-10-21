@@ -63,13 +63,13 @@ def bundle(subj, dais):
 
 
 def main():
-    if len(sys.argv) > 1 and sys.argv[1] in SUBJ:                  # 教科を1つだけ（大問1〜9のうち、できているもの）
-        for name, pages in bundle(sys.argv[1], range(1, 10)):
+    if len(sys.argv) > 1 and sys.argv[1] in SUBJ:                  # 教科を1つだけ（大問1〜10のうち、できているもの）
+        for name, pages in bundle(sys.argv[1], range(1, 11)):
             print(f'{name}  {pages}ページ')
         return
     every = '--all' in sys.argv
     for subj, default in (DEFAULT if not every else {**DEFAULT, 'sansu': None, 'kokugo': None}).items():
-        dais = range(1, 10) if every else default
+        dais = range(1, 11) if every else default
         for name, pages in bundle(subj, dais):
             print(f'{name}  {pages}ページ')
 
