@@ -2029,7 +2029,7 @@ def draw_question(c, y, n, q, qs):
     text(c, LM, y, f'({n})', qs, bold=True)
     tx = LM + 26
     if kind == 'short':
-        width = 318
+        width = RM - tx - 40 if q.get('wide') else 318            # wide：文を広くとり、解答らんは、右はしの1つだけ
     else:
         width = RM - tx
     plain, spans = marks(q['q'])
@@ -2058,18 +2058,19 @@ def draw_question(c, y, n, q, qs):
             for k in range(k_):
                 ans_box(c, RM - (k_ - k) * cs, RM - (k_ - k - 1) * cs, last - 8, last - 8 + cs)
             return last - lead - 8
-        ans_box(c, 404, RM, last - 7, last + qs + 3)
+        ans_box(c, RM - 26 if q.get('wide') else 404, RM, last - 7, last + qs + 3)
         if q.get('unit'):
             text(c, RM - tw(q['unit'], 9) - 4, last - 1, q['unit'], 9, color=MUTED)
         return last - lead - 6
     y = last - lead + 2
     if kind == 'long':
-        ans_box(c, tx, RM, y - 40, y + 4)
-        if not DRY:
+        bh = q.get('boxh', 40)
+        ans_box(c, tx, RM, y - bh, y + 4)
+        if not DRY and bh >= 40:
             setline(c, .4, LINE, (2, 2))
             c.line(tx + 6, y - 18, RM - 6, y - 18)
             c.setDash()
-        return y - 40 - lead + 2
+        return y - bh - lead + 2
     if kind == 'grid':
         labels = q['labels']
         per = q.get('per', min(len(labels), 4))
@@ -2273,13 +2274,15 @@ def render_problem(c, subj, dai, i, st, total, qs):
                        tab.get('left_cols', ())) - 14
     y -= qs + 2
     for n, q in enumerate(st['qs'], 1):
-        if q.get('head'):                               # 小問のまとまりの見出し（国語）
+        if q.get('head'):                               # 小問のまとまりの見出し（国語）。2行め以降は、語群などの補足
+            hl = q['head'].split('\n')
             y -= 2
             if not DRY:
                 c.setFillColor(PALE)
-                c.rect(LM, y - 6, RM - LM, 19, fill=1, stroke=0)
-            text(c, LM + 6, y, q['head'], 9.5, bold=True, color=ACCENT)
-            y -= 24
+                c.rect(LM, y - 6 - 12.5 * (len(hl) - 1), RM - LM, 19 + 12.5 * (len(hl) - 1), fill=1, stroke=0)
+            for k, ln in enumerate(hl):
+                text(c, LM + 6, y - 12.5 * k, ln, 9.5, bold=(k == 0), color=ACCENT if k == 0 else INK)
+            y -= 24 + 12.5 * (len(hl) - 1)
         y = draw_question(c, y, n, q, qs)
         sp = q.get('space', st.get('space', 0))
         if sp:                                          # 算数：式・考え方を書く、計算らん

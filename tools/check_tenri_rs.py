@@ -32,6 +32,7 @@ import tenri_rs_kokugo2 as K2
 import tenri_rs_kokugo3 as K3
 import tenri_rs_kokugo4 as K4
 import ja_grammar
+import ja_read
 import world_outline
 from build_tenri_rs import SANKEN_ARROWS, SHAPES
 
@@ -1899,7 +1900,7 @@ except ImportError:
 import kanji_grade as KG
 
 _kks = pykakasi.kakasi()
-KANA_FIX = {'築く': 'きずく', '潔く': 'いさぎよく'}                       # pykakasi の読みの誤り（JMdict で確認した正しい読み）
+KANA_FIX = {'築く': 'きずく', '潔く': 'いさぎよく', '開ける': 'あける'}                       # pykakasi の読みの誤り（JMdict で確認した正しい読み）
 is_kanji = lambda ch: '一' <= ch <= '龥'
 kata2h = lambda t_: ''.join(chr(ord(c_) - 0x60) if 'ァ' <= c_ <= 'ヶ' else c_ for c_ in t_)
 RAD_NAME = {                                                              # 康熙字典の部首番号 → 部首名（本によってちがう呼び名もふくむ）
@@ -1919,6 +1920,7 @@ def reading(w_):
 def check_kanji_set(mod):
     """漢字の問題の答えを、読み（pykakasi）・学年配当（KANJIDIC2）・部首と画数（KANJIDIC2）から調べ直す。(問題数, 不一致の一覧) を返す。"""
     bad, n_ = [], 0
+    used_ = []                                                                        # 熟語の組み立て（作る）で使った漢字
     for i_, st_ in enumerate(mod.SETS, 1):
         seen = set()
         for j_, q_ in enumerate(st_['qs'], 1):
@@ -1945,6 +1947,72 @@ def check_kanji_set(mod):
             elif m_ and m_['t'] == 'S':
                 if KG.INFO[m_['kanji']][1] != m_['n'] or a_ != f'{m_["n"]}画':
                     bad.append((tag, '画数', m_['kanji'], KG.INFO[m_['kanji']][1], m_['n']))
+            elif m_ and m_['t'] == 'TJ':                                              # 同訓異字：下線部の訓読みから漢字を決め、二字の熟語を作る
+                plain_, sp_ = ja_grammar.marks(q_['q'])
+                under_ = [plain_[a1_:b1_] for a1_, b1_ in sp_]
+                if (under_ != [h_ for h_, _ in m_['parts']] or any(h_ not in kun_forms(k_) for h_, k_ in m_['parts'])
+                        or m_['word'] != a_ or set(a_) != {k_ for _, k_ in m_['parts']} or non_elem(a_)):
+                    bad.append((tag, '同訓異字から熟語', under_, m_['parts'], a_))
+            elif m_ and m_['t'] == 'T':                                               # ひらがなの文を二字の熟語に
+                ph_, (p1_, p2_) = m_['phrase'], m_['parts']
+                i1_ = ph_.find(p1_[0])
+                if (q_['q'] != f'「{ph_}」' or i1_ < 0 or ph_.find(p2_[0], i1_ + len(p1_[0])) < 0 or not reading_ok(p1_[0], p1_[1])
+                        or not reading_ok(p2_[0], p2_[1]) or set(a_) != {p1_[1], p2_[1]} or m_['word'] != a_ or non_elem(a_)):
+                    bad.append((tag, 'ひらがなの文から熟語', ph_, m_['parts'], a_))
+            elif m_ and m_['t'] == 'Z':                                               # 部首と漢字の組み合わせ
+                names_ = [nm_ for nm_, _, _ in m_['pairs']]
+                rests_ = [r_ for _, r_, _ in m_['pairs']]
+                ks_ = [k_ for _, _, k_ in m_['pairs']]
+                ok_ = (names_ == m_['a'] and sorted(rests_) == sorted(m_['b']) and a_ == ks_ and not non_elem(''.join(ks_)) and len(set(ks_)) == 5)
+                for nm_, r_, k_ in m_['pairs']:
+                    ok_ = ok_ and KG.INFO[k_][0] == RAD_NUM[nm_]                      # 漢字の部首が、A群の部首
+                    if r_ in KG.INFO:                                                 # 画数：部首の画数＋残りの部分の画数
+                        ok_ = ok_ and KG.INFO[k_][1] == RAD_STROKE[nm_] + KG.INFO[r_][1]
+                if not ok_:
+                    bad.append((tag, '部首と漢字の組み合わせ', m_['pairs'], a_))
+            elif m_ and m_['t'] == 'D':                                               # 同じ読み方の漢字
+                tg_, kj_, opts_, rds_ = m_['target'], m_['kanji'], m_['opts'], m_['rds']
+                words_ = [tg_] + opts_
+                got_ = [{v_ for v_ in {r2_ for r2_, _ in ja_read.readings(kj_)} | {x_ for r2_, _ in ja_read.readings(kj_) for x_, _k in ja_read._variants(r2_, 'x', True) | ja_read._variants(r2_, 'x', False)}
+                         if ja_read.reads_as(w_, kj_, v_)} for w_ in words_]
+                same_ = [k_ for k_, g_, r_ in zip('アイウエ', got_[1:], rds_[1:]) if rds_[0] in g_]
+                if (any(kj_ not in w_ for w_ in words_) or any(r_ not in g_ for r_, g_ in zip(rds_, got_)) or same_ != [a_]
+                        or any(r_ == rds_[0] for k_, r_ in zip('アイウエ', rds_[1:]) if k_ != a_) or non_elem(''.join(words_))):
+                    bad.append((tag, '同じ読み方', tg_, kj_, opts_, got_, rds_, a_))
+            elif m_ and m_['t'] == 'E':                                               # カタカナの文を漢字かな交じり文に
+                runs_ = re.findall(r'[一-龥]+', a_)
+                if (ja_read.hira(a_) != kata2h(m_['kata']) or len(runs_) != m_['n'] or f'「{m_["kata"]}」' not in q_['q'] or non_elem(a_)
+                        or '一二三四五六七八'[m_['n'] - 1] + 'つ' not in q_['q']):
+                    bad.append((tag, 'カタカナ文', m_['kata'], a_, ja_read.hira(a_), len(runs_)))
+            elif m_ and m_['t'] == 'OP':                                              # 同訓異字（送りがな）
+                plain_, sp_ = ja_grammar.marks(q_['q'])
+                under_ = tuple(plain_[a1_:b1_] for a1_, b1_ in sp_)
+                a1_, a2_ = m_['a']
+                if (under_ != m_['hira'] or under_[0] != under_[1] and False or reading(a1_) != under_[0] or reading(a2_) != under_[1] or a1_ == a2_
+                        or a_ != f'{a1_}　{a2_}' or non_elem(a1_ + a2_)):
+                    bad.append((tag, '同訓異字', under_, m_['a'], reading(a1_), reading(a2_)))
+            elif m_ and m_['t'] == 'Q':                                               # 熟語の読み方（音読み・訓読み）の組み合わせ
+                tt_ = ja_read.pair_type(m_['target'])
+                ot_ = [ja_read.pair_type(o_) for o_ in m_['opts']]
+                same_ = [k_ for k_, x_ in zip('アイウエ', ot_) if x_ == tt_]
+                if tt_ is None or None in ot_ or same_ != [a_] or non_elem(m_['target'] + ''.join(m_['opts'])):
+                    bad.append((tag, '音訓の組み合わせ', m_['target'], tt_, m_['opts'], ot_, a_))
+            elif m_ and m_['t'] == 'BR':                                              # 部首名から漢字を入れる
+                filled_ = q_['q'].replace('〔　〕', a_)
+                if (KG.INFO[a_][0] != RAD_NUM[m_['radical']] or '〔　〕' not in q_['q'] or m_['word'] not in filled_ or a_ not in m_['word']
+                        or not q_['q'].startswith(f'「{m_["radical"]}」') or non_elem(m_['word'])):
+                    bad.append((tag, '部首名から漢字', m_['radical'], a_, m_['word']))
+            elif m_ and m_['t'] == 'KU':                                              # 熟語の組み立て（漢字を組み合わせて作る）
+                kind_ = {'よく似た': 'ア', '反対の': 'イ', '打ち消す': 'カ', '説明する': 'ウ'}
+                letter_ = next(v_ for k_, v_ in kind_.items() if k_ in q_['q'])
+                used_.extend(a_)
+                if (KU_TYPE.get(a_) != letter_ or not set(a_) <= set(KU_CHARS) or non_elem(a_) or len(a_) != 2):
+                    bad.append((tag, '熟語の組み立て（作る）', a_, letter_))
+                if j_ == 1 or q_.get('head'):
+                    used_.clear()
+                    used_.extend(a_)
+                    if '　'.join(KU_CHARS) not in q_['head']:
+                        bad.append((tag, '漢字の枠が、検算の表と合わない'))
             else:
                 t_ = _t_(q_)
                 if re.fullmatch(r'[ァ-ヶー]+', t_):                      # 書き取り：答えの読みが、カタカナと同じ
@@ -1958,6 +2026,9 @@ def check_kanji_set(mod):
                         bad.append((tag, '読み', t_, a_, reading(t_), non_elem(t_)))
             if not q_['ex'] or q_['ex'].endswith(('と書く。', '読む。')):
                 bad.append((tag, '解説に一言がない'))
+        if used_ and (len(used_) != len(set(used_)) or len(used_) != 8):
+            bad.append((i_, '熟語の組み立て（作る）：漢字を重ねて使っている', used_))
+        used_.clear()
     return n_, bad
 
 
@@ -1967,11 +2038,26 @@ def _t_(q_):
 
 
 non_elem = lambda t_: [ch_ for ch_ in t_ if is_kanji(ch_) and not KG.elementary(ch_)]
+RAD_NUM = {n_: k_ for k_, ns_ in RAD_NAME.items() for n_ in ns_}
+RAD_STROKE = {'さんずい': 3, 'くさかんむり': 3, 'しんにょう': 3, 'いとへん': 6, 'うかんむり': 3, 'にんべん': 2, 'きへん': 4, 'ごんべん': 7, 'おおざと': 3, 'もんがまえ': 8}
+KU_CHARS = '森林強弱不安早朝重'
+KU_TYPE = {'森林': 'ア', '強弱': 'イ', '不安': 'カ', '早朝': 'ウ'}                  # 作問のとき、JMdict で、この漢字から作れる熟語が、この4つだけであることを確かめた
+
+
+def kun_forms(k_):
+    """漢字の訓読み（語幹＋送りがな）。"""
+    return {a_ + c_ for a_, _, c_ in (x_.partition('.') for x_ in KG.READ[k_][1])}
+
+
+def reading_ok(piece_, k_):
+    """ひらがな piece_ が、漢字 k_ の、音読み・訓読み（語幹、または語幹＋送りがな）のどれかか。"""
+    on_, kun_ = KG.READ[k_]
+    return piece_ in on_ or piece_ in kun_forms(k_) or piece_ in {x_.partition('.')[0] for x_ in kun_}
+
 
 # ---------------- 国語・大問1（漢字） ----------------
 n1_, bad1_ = check_kanji_set(K1)
 eq(f'国1 漢字{n1_}問（読み・書き取り・送りがな・熟語の選択・部首・画数）の答え', bad1_, [])
-assert all(len(st_['qs']) == 15 for st_ in K1.SETS)
 
 # ---------------- 国語・大問2（語句・熟語） ----------------
 # 作問のとき、JMdict（PyPIの jamdict-data）で、言葉の実在と意味を確かめた。ここでは、その表と、データが食いちがっていないかを調べる。
@@ -1986,8 +2072,13 @@ ANTONYM = {
 YOJI = {
     '一石二鳥', '十人十色', '以心伝心', '自画自賛', '起承転結', '温故知新', '晴耕雨読', '絶体絶命', '大器晩成', '大同小異', '四苦八苦', '弱肉強食',
     '不言実行', '無我夢中', '一日千秋', '心機一転', '完全無欠', '意味深長', '空前絶後', '老若男女', '千差万別', '古今東西', '自給自足', '一心不乱',
-    '適材適所', '半信半疑', '公明正大',
+    '適材適所', '半信半疑', '公明正大', '前代未聞', '全力投球', '一心同体', '三日坊主',
 }
+KATAKANA_GO = {'ルール': '規則', 'マナー': '作法', 'テーマ': '主題', 'チャンス': '機会'}   # カタカナ語と、その意味
+POEMS = {                                                                 # 俳句（広く知られた古典。本文は記憶による。原典での確認は、していない）
+    '閑かさや岩にしみ入る〔　〕の声': 'せみ', '〔　〕や月は東に日は西に': 'なのはな', '〔　〕くへば鐘が鳴るなり法隆寺': 'かき', '名月を〔　〕くれろと泣く子かな': 'とって',
+}
+GOGUN_ADV = {'あいにく', 'せっかく', 'しみじみ', 'うっかり', 'とうてい', 'いまにも', 'ひそひそ', 'ことさら'}   # 作問のとき JMdict で確認
 IDIOMS = {
     'ねこの手も借りたい', '耳を疑う', '顔が広い', '肩の荷が下りる', '青菜に塩', '目が高い', 'すずめのなみだ', '馬の耳に念仏', '口が重い', '胸をなでおろす',
     '首を長くして待つ', '足を引っぱる', '腹を割って話す', '鼻が高い', '手が足りない', '足が出る', '頭が下がる', '肩を並べる', '目を丸くする', '気が重い',
@@ -1995,6 +2086,9 @@ IDIOMS = {
     '百聞は一見にしかず', '手を焼く', '目を皿にする', '足を運ぶ', '頭をかかえる', '石の上にも三年', '花よりだんご', '雨降って地固まる',
     '立つ鳥あとをにごさず', 'まかぬ種は生えぬ', '後悔先に立たず', '良薬は口に苦し', '備えあればうれいなし', '住めば都', '笑う門には福来たる',
     'ころばぬ先のつえ', '足を洗う', '手を貸す', '気が長い',
+    '二の足をふむ', '耳にたこができる', '赤の他人', '白い目で見る', '腹黒い', '犬も歩けば棒に当たる', '猫をかぶる', '虎の威を借る狐', '花を持たせる', '棒に振る',
+    '水に流す', '気が置けない', 'くもの子を散らす', 'どんぐりの背比べ', 'かえるの子はかえる', 'えびでたいをつる', 'ちりも積もれば山となる', '猫に小判', '水を差す',
+    '渡りに船', '焼け石に水', '手を焼く', '目を皿にする', '足を運ぶ', 'うでが鳴る', 'ねこをかぶる', 'とらの威を借る狐',
 }
 
 
@@ -2002,12 +2096,60 @@ def check_goku_set(mod):
     """語句・熟語の問題の答えを、表と、問題文・選択肢から調べ直す。(問題数, 不一致の一覧) を返す。"""
     bad, n_ = [], 0
     for i_, st_ in enumerate(mod.SETS, 1):
+        gh_, gseen_ = {}, set()                                                   # 語群（head の2行め以降）と、使った記号
         for j_, q_ in enumerate(st_['qs'], 1):
             n_ += 1
             tag = f'{i_}-{j_}'
             m_, a_, qt_ = q_['meta'], q_['ans'], q_['q']
             t_ = m_['t']
-            if t_ == 'J':
+            if q_.get('head'):
+                gh_ = dict(re.findall(r'([ア-ク]) ([^\s　]+)', '\n'.join(q_['head'].split('\n')[1:])))
+                gseen_ = set()
+            if t_ == 'GS':                                                        # 語群から選ぶ（意味つきの語・カタカナ語）
+                ok_ = a_ in gh_ and gh_[a_] == m_['word'] and a_ not in gseen_
+                gseen_.add(a_)
+                if m_['kata']:
+                    plain_, sp_ = ja_grammar.marks(qt_)
+                    ok_ = ok_ and [plain_[x1_:x2_] for x1_, x2_ in sp_] == [m_['kata']] and KATAKANA_GO.get(m_['kata']) == m_['word']
+                else:
+                    ok_ = ok_ and '〔　〕' in qt_ and m_['word'] in GOGUN_ADV and f'（{qt_.split("（")[-1]}' == '（' + qt_.split('（')[-1]
+                if not ok_:
+                    bad.append((tag, '語群から選ぶ', a_, gh_, m_['word']))
+            elif t_ == 'YJ':                                                      # 意味の同じ四字熟語を、語群から選んで、漢字に直す
+                gseen_.add(m_['hira'])
+                plain_, sp_ = ja_grammar.marks(qt_)
+                if (a_ != m_['word'] or m_['word'] not in YOJI or m_['hira'] not in gh_.values() or reading(a_) != m_['hira']
+                        or not sp_ or len(a_) != 4 or non_elem(a_)):
+                    bad.append((tag, '四字熟語の言いかえ', a_, m_['hira'], reading(a_)))
+            elif t_ == 'NF':                                                      # どの〔　〕にも入らない言葉
+                used2_ = [c2_ for _, c2_, _ in m_['stems']]
+                rest_ = [o2_ for o2_ in m_['opts'] if o2_ not in used2_]
+                lines_ = qt_.split('\n')
+                ok_ = (len(set(m_['opts'])) == 5 and len(set(used2_)) == 4 and set(used2_) <= set(m_['opts']) and len(rest_) == 1
+                       and 'アイウエオ'.index(a_) == m_['opts'].index(rest_[0])
+                       and all(a2_ + c2_ + b2_ in IDIOMS | YOJI for a2_, c2_, b2_ in m_['stems'])
+                       and all(f'{a2_}〔　〕{b2_}' in ' '.join(lines_[:2]) for a2_, _, b2_ in m_['stems'])
+                       and lines_[2] == '　'.join(f'{s2_} {o2_}' for s2_, o2_ in zip('アイウエオ', m_['opts'])) and not non_elem(''.join(m_['opts'])))
+                if not ok_:
+                    bad.append((tag, '当てはまらない言葉', m_['stems'], m_['opts'], a_))
+            elif t_ == 'HK':                                                      # 俳句の空らん
+                opts_ = m_['opts']
+                if (POEMS.get(m_['poem']) is None or a_ not in 'アイウエ' or opts_['アイウエ'.index(a_)] != POEMS[m_['poem']] or len(set(opts_)) != 4
+                        or not qt_.startswith(m_['poem'])):
+                    bad.append((tag, '俳句の空らん', m_['poem'], opts_, a_))
+            elif t_ == 'UW':                                                      # 慣用句の使い方
+                lines_ = qt_.split('\n')[1:]
+                if (m_['idiom'] not in IDIOMS or a_ not in 'アイウエ' or any(m_['idiom'][:-1] not in x2_ for x2_ in m_['sents'])
+                        or lines_ != [f'{s2_} {t2_}' for s2_, t2_ in zip('アイウエ', m_['sents'])] or len(set(m_['sents'])) != 4):
+                    bad.append((tag, '慣用句の使い方', m_['idiom'], a_))
+            elif t_ == 'IC':                                                      # ことわざ・慣用句の誤り
+                plain_, sp_ = ja_grammar.marks(qt_)
+                under_ = [plain_[x1_:x2_] for x1_, x2_ in sp_]
+                right_ok_ = (a_ == '○' and m_['used'] == m_['right']) or (a_ != '○' and gh_.get(a_) == m_['right'] and m_['used'] != m_['right'])
+                if (under_ != [m_['used']] or m_['used'] not in IDIOMS or m_['right'] not in IDIOMS or m_['right'] not in gh_.values()
+                        or m_['used'] not in gh_.values() or not right_ok_ or m_['ok'] != (a_ == '○')):
+                    bad.append((tag, 'ことわざ・慣用句の誤り', under_, m_['used'], m_['right'], a_))
+            elif t_ == 'J':
                 if len(a_) != 2 or a_[1] != m_['hint'] or f'［{m_["hint"]}］' not in qt_ or non_elem(a_):
                     bad.append((tag, '意味から熟語', a_, m_['hint']))
             elif t_ == 'C':
