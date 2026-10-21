@@ -1241,13 +1241,124 @@ def fig_shadow(c, x, top, w, h):
     text(c, cx + 8, cy - 14, '棒', 8.5, color=MUTED)
 
 
+def fig_leverbar(c, x, top, w, h, pts=(), fulcrum='B', dist=True):
+    """棒の上の点 pts=(記号, 左はしからの長さcm) と支点。点の間の長さを下に書く。"""
+    xs = [p for _, p in pts]
+    lo, hi = min(xs), max(xs)
+    scale = min(300, w - 160) / (hi - lo)
+    x0 = x + (w - (hi - lo) * scale) / 2
+    X = lambda p: x0 + (p - lo) * scale
+    by = top - 44
+    setline(c, 1)
+    c.setFillColor(PALE)
+    c.rect(X(lo) - 14, by - 4, (hi - lo) * scale + 28, 8, stroke=1, fill=1)
+    fp = dict(pts)[fulcrum]
+    c.setFillColor(colors.white)
+    c.drawPath(_poly(c, [(X(fp), by - 4), (X(fp) - 15, by - 34), (X(fp) + 15, by - 34)]), stroke=1, fill=1)
+    for lab, p in pts:
+        _dot(c, X(p), by)
+        text(c, X(p), by + 9, lab, 11, bold=True, center=True)
+    if dist:
+        ys = by - 50
+        ps = sorted(p for _, p in pts)
+        for a, b in zip(ps, ps[1:]):
+            setline(c, .7, ACCENT)
+            c.line(X(a), ys, X(b), ys)
+            c.line(X(a), ys - 3, X(a), ys + 3)
+            c.line(X(b), ys - 3, X(b), ys + 3)
+            text(c, (X(a) + X(b)) / 2, ys - 12, f'{b - a:g}cm', 9, color=ACCENT, center=True)
+
+
+def fig_balance(c, x, top, w, h, tilt='level', left='', right=''):
+    """上皿てんびん。tilt は 'level'（つり合い）・'left'（左の皿が下がる）・'right'（右の皿が下がる）。"""
+    cx = x + w / 2
+    by = top - h + 8
+    setline(c, 1)
+    c.setFillColor(PALE)
+    c.rect(cx - 34, by, 68, 7, stroke=1, fill=1)
+    c.rect(cx - 3, by + 7, 6, 56, stroke=1, fill=1)
+    py = by + 66
+    half, d = 80, {'level': 0, 'left': 8, 'right': -8}[tilt]
+    ly, ry = py - d, py + d
+    setline(c, 2.2)
+    c.line(cx - half, ly, cx + half, ry)
+    c.setFillColor(INK)
+    c.circle(cx, py, 3, stroke=0, fill=1)
+    a = math.atan2(d, half)
+    setline(c, 1.1, ACCENT)
+    c.line(cx, py, cx + 20 * math.sin(a), py - 20 * math.cos(a))               # 針
+    setline(c, .7, MUTED)
+    c.line(cx, by + 40, cx, by + 46)
+    for ex, ey, lab in ((cx - half, ly, left), (cx + half, ry, right)):
+        setline(c, .8)
+        c.line(ex, ey, ex - 24, ey - 20)
+        c.line(ex, ey, ex + 24, ey - 20)
+        c.setFillColor(PALE)
+        c.drawPath(_poly(c, [(ex - 28, ey - 20), (ex + 28, ey - 20), (ex + 22, ey - 26), (ex - 22, ey - 26)]), stroke=1, fill=1)
+        text(c, ex, ey - 39, lab, 9, center=True)
+
+
+def fig_cylinder(c, x, top, w, h, levels=(32.0,), vmax=50, labels='アイウエ'):
+    """メスシリンダー。levels は水面（へこんだ液面の底）の目盛り。"""
+    n = len(levels)
+    pw = min(w / n, 130)
+    ch, cw = h - 36, 26
+    yb = top - h + 22
+    sc = ch / vmax
+    for k, lv in enumerate(levels):
+        cx = x + (w - n * pw) / 2 + k * pw + pw / 2 - 14
+        c.setFillColor(colors.HexColor('#D8E6F0'))
+        c.rect(cx - cw / 2, yb, cw, lv * sc, stroke=0, fill=1)
+        setline(c, 1.2)
+        c.line(cx - cw / 2, yb + ch + 4, cx - cw / 2, yb)
+        c.line(cx + cw / 2, yb + ch + 4, cx + cw / 2, yb)
+        c.setFillColor(PALE)
+        c.rect(cx - cw / 2 - 7, yb - 5, cw + 14, 5, stroke=1, fill=1)
+        for v in range(0, vmax + 1):
+            ln = 12 if v % 10 == 0 else 8 if v % 5 == 0 else 5
+            setline(c, .5)
+            c.line(cx + cw / 2, yb + v * sc, cx + cw / 2 - ln, yb + v * sc)
+            if v % 10 == 0 and v > 0:
+                text(c, cx + cw / 2 + 5, yb + v * sc - 3, str(v), 8, color=MUTED)
+        yl = yb + lv * sc
+        setline(c, 1)
+        p = c.beginPath()
+        p.moveTo(cx - cw / 2, yl + 2.5)
+        p.curveTo(cx - cw / 4, yl, cx + cw / 4, yl, cx + cw / 2, yl + 2.5)
+        c.drawPath(p, stroke=1, fill=0)
+        text(c, cx, yb - 18, labels[k], 11, bold=True, center=True)
+
+
+def fig_rods(c, x, top, w, h, pts=(), length=30):
+    """金属の棒。左はしを加熱する。pts は (記号, 加熱するところからの距離cm)。"""
+    x0, x1 = x + 60, x + w - 40
+    X = lambda d: x0 + (x1 - x0) * d / length
+    by = top - 36
+    setline(c, 1)
+    c.setFillColor(PALE)
+    c.rect(x0, by - 4, x1 - x0, 8, stroke=1, fill=1)
+    c.setFillColor(colors.HexColor('#C9822B'))
+    c.drawPath(_poly(c, [(x0 + 2, by - 6), (x0 + 14, by - 6), (x0 + 8, by - 24)]), stroke=0, fill=1)
+    text(c, x0 + 8, by - 38, '加熱', 9, color=MUTED, center=True)
+    for d in range(0, length + 1, 5):
+        setline(c, .6)
+        c.line(X(d), by - 4, X(d), by - 9)
+        text(c, X(d), by - 21, str(d), 8, color=MUTED, center=True)
+    text(c, x1 + 4, by - 21, 'cm', 8, color=MUTED)
+    for lab, d in pts:
+        c.setFillColor(ACCENT)
+        c.circle(X(d), by + 7, 3, stroke=0, fill=1)
+        text(c, X(d), by + 14, lab, 10.5, bold=True, center=True)
+
+
 FIGS = {'monochord': fig_monochord, 'circuits': fig_circuits, 'moon': fig_moon,
         'ice_graph': fig_ice_graph, 'pendulum': fig_pendulum,
         'strata': fig_strata, 'magnet': fig_magnet, 'lever': fig_lever, 'sanken': fig_sanken,
         'linegraph': fig_linegraph, 'flower': fig_flower, 'syringe': fig_syringe, 'typhoon': fig_typhoon,
         'world': fig_world, 'cloudmaps': fig_cloudmaps, 'seed': fig_seed, 'sao': fig_sao, 'stem': fig_stem,
         'circuitset': fig_circuitset, 'ammeter': fig_ammeter, 'circulation': fig_circulation, 'cans': fig_cans,
-        'mirror': fig_mirror, 'digest': fig_digest, 'watercycle': fig_watercycle, 'pulleys': fig_pulleys, 'shadow': fig_shadow}
+        'mirror': fig_mirror, 'digest': fig_digest, 'watercycle': fig_watercycle, 'pulleys': fig_pulleys, 'shadow': fig_shadow,
+        'leverbar': fig_leverbar, 'balance': fig_balance, 'cylinder': fig_cylinder, 'rods': fig_rods}
 
 
 # ---------- 表・本文ブロック ----------
@@ -1377,7 +1488,15 @@ def render_problem(c, subj, dai, i, st, total, qs):
     if st.get('items'):
         y = draw_items(c, y, st['items'], st.get('item_size', 10))
     fig, tab = st.get('fig'), st.get('table')
-    if fig and tab:          # 図を左、表を右
+    if fig and tab and st.get('stack'):          # 図を上、表を下（図が横に長いとき）
+        if not DRY:
+            FIGS[fig['name']](c, LM, y, RM - LM, fig['h'], **fig.get('args', {}))
+        y -= fig['h'] + 6
+        colw = tab['colw']
+        y = draw_table(c, LM + (RM - LM - sum(colw)) / 2, y, tab['rows'], colw,
+                       tab.get('size', 9.5), tab.get('head_col', True), tab.get('head_row', True),
+                       tab.get('left_cols', ())) - 14
+    elif fig and tab:          # 図を左、表を右
         fh = fig['h']
         if not DRY:
             FIGS[fig['name']](c, LM, y, 150, fh, **fig.get('args', {}))

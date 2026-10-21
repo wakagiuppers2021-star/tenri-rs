@@ -17,6 +17,7 @@ import tenri_rs_rika2 as R2
 import tenri_rs_rika3 as R3
 import tenri_rs_rika4 as R4
 import tenri_rs_rika5 as R5
+import tenri_rs_rika6 as R6
 import tenri_rs_shakai1 as S1
 import tenri_rs_shakai2 as S2
 import tenri_rs_shakai3 as S3
@@ -602,6 +603,137 @@ eq('理5-10(5) 太陽の動き', ans(R5, 10, 5), f'{(14 - 10) * 15}度')
 eq('理5-10(6) 星座の動き', ans(R5, 10, 6), f'{30 * 3}度')
 west = (30 * 3)                                                                # 真南から西へ90度ずれた方角
 eq('理5-10(7) 3か月後の方角', ans(R5, 10, 7), {0: '南の空', 90: '西の空'}[west])
+
+# ---------------- 理科・大問6 ----------------
+from fractions import Fraction
+
+# 1 水溶液：表の観察から、5種類の水溶液を決める
+props61 = {'塩酸': (True, False, False, '酸'), '重そう水': (False, False, True, 'アルカリ'), '食塩水': (False, False, True, '中'),
+           '炭酸水': (False, True, False, '酸'), 'アンモニア水': (True, False, False, 'アルカリ')}      # におい・あわ・固体が残る・性質
+tb61 = {r[0]: r[1:] for r in R6.SETS[0]['table']['rows'][1:]}
+def obs61(k):
+    blue, red = tb61['青リトマス紙'][k], tb61['赤リトマス紙'][k]
+    return (tb61['におい'][k] != 'なし', tb61['あわ'][k] == 'あり', tb61['じょう発させる'][k] == '白い固体',
+            '酸' if blue == '赤くなる' else 'アルカリ' if red == '青くなる' else '中')
+name61 = []
+for k in range(5):
+    hit = [n for n, v in props61.items() if v == obs61(k)]
+    assert len(hit) == 1, (k, hit)
+    name61.append(hit[0])
+eq('理6-1(3) 水溶液の名前', ans(R6, 1, 3), name61)
+eq('理6-1(1) つんとする', ans(R6, 1, 1), join('ABCDE'[k] for k in range(5) if obs61(k)[0]))
+eq('理6-1(2) 固体が残る', ans(R6, 1, 2), join('ABCDE'[k] for k in range(5) if obs61(k)[2]))
+eq('理6-1(4) アルカリ性', ans(R6, 1, 4), join('ABCDE'[k] for k in range(5) if obs61(k)[3] == 'アルカリ'))
+eq('理6-1(6) 食塩水の重さ', ans(R6, 1, 6), f'{150 + 15}g')
+eq('理6-1(7) 10%の食塩水', ans(R6, 1, 7), [f'{200 * Fraction(10, 100):g}g', f'{200 - 200 * Fraction(10, 100):g}g'])
+eq('理6-1(8) 20%の食塩水', ans(R6, 1, 8), f'{Fraction(20, 100) * 100 / (1 - Fraction(20, 100)):g}g')
+
+# 2 てこ：棒の上の点の位置から、モーメントのつり合いを計算する
+pos62 = dict(R6.SETS[1]['fig']['args']['pts'])
+AB, BC = pos62['B'] - pos62['A'], pos62['C'] - pos62['B']
+eq('理6-2(2) Cを押す力', ans(R6, 2, 2), f'{num(45 * AB / BC)}kg')
+eq('理6-2(3) 荷物の重さ', ans(R6, 2, 3), f'{num(12 * BC / AB)}kg')
+bc4 = int(re.search(r'BC間が(\d+)cm', q_text(R6, 2, 4)).group(1))
+eq('理6-2(4) BCを近づける', ans(R6, 2, 4), f'{num(45 * AB / bc4)}kg')
+ab5, bc5 = [int(x) for x in re.search(r'AB間を(\d+)cm、BC間を(\d+)cm', q_text(R6, 2, 5)).groups()]
+assert ab5 + bc5 == AB + BC
+eq('理6-2(5) 台を動かす', ans(R6, 2, 5), f'{num(45 * ab5 / bc5)}kg')
+lever62 = {'くぎぬき': True, 'ペンチ': True, 'カッターナイフ': False, 'つめきり': True, 'スポイト': False}
+eq('理6-2(7) てこを利用しない', ans(R6, 2, 7), join(k for k, v in choices(q_text(R6, 2, 7)).items() if not lever62[v]))
+mid62 = {'くぎぬき': '支点', 'ピンセット': '力点', '手押し車': '作用点', 'せんぬき': '作用点'}                 # 3つの点の真ん中にあるもの
+eq('理6-2(8) 力点が真ん中', ans(R6, 2, 8), [k for k, v in choices(q_text(R6, 2, 8)).items() if mid62[v] == '力点'][0])
+
+# 3 メスシリンダー：図の液面の高さから読む
+lv63 = R6.SETS[2]['fig']['args']['levels']
+eq('理6-3(2) 石を入れる前', ans(R6, 3, 2), f'{lv63[0]:.1f}mL')
+eq('理6-3(3) 石を入れたあと', ans(R6, 3, 3), f'{lv63[1]:.1f}mL')
+vol63 = lv63[1] - lv63[0]
+eq('理6-3(4) 石の体積', ans(R6, 3, 4), f'{vol63:.1f}cm³')
+eq('理6-3(5) 1cm³の重さ', ans(R6, 3, 5), f'{27 / vol63:.1f}g')
+rows = R6.SETS[2]['table']['rows']
+w63 = [float(v) for v in rows[0][1:]]
+s63 = [float(v) for v in rows[1][1:]]
+k63 = s63[0] / w63[0]
+assert all(abs(s - k63 * w) < 1e-9 for s, w in zip(s63, w63))
+eq('理6-3(6) 水200mL', ans(R6, 3, 6), f'{num(k63 * 200)}g')
+eq('理6-3(7) 食塩45g', ans(R6, 3, 7), f'{num(45 / k63)}mL')
+
+# 4 上皿てんびん
+eq('理6-4(1) かたむき', ans(R6, 4, 1), {'right': '右', 'left': '左'}[R6.SETS[3]['fig']['args']['tilt']])
+w64 = [float(x) for x in re.findall(r'([\d.]+)g', q_text(R6, 4, 5).split('分銅')[0])]
+eq('理6-4(5) 分銅の合計', ans(R6, 4, 5), f'{num(sum(w64))}g')
+best = min((cmb for r in range(1, 5) for cmb in itertools.combinations([5, 2, 1, 0.5], r) if sum(cmb) == 8), key=len)
+eq('理6-4(6) 8gの分銅', ans(R6, 4, 6), '・'.join(f'{num(v)}g' for v in best))
+eq('理6-4(7) シーソー', ans(R6, 4, 7), f'{num(40 * 3 / 30)}m')
+
+# 5 気温と地面の温度：グラフの2本の線から
+lines65 = dict(R6.SETS[4]['fig']['args']['lines'])
+rng65 = {k: max(v for _, v in pts) - min(v for _, v in pts) for k, pts in lines65.items()}
+ground65 = max(rng65, key=rng65.get)                                    # 地面のほうが、1日の変化が大きい
+air65 = [k for k in lines65 if k != ground65][0]
+eq('理6-5(3) 地面の温度', ans(R6, 5, 3), ground65)
+eq('理6-5(4) アの温度差', ans(R6, 5, 4), f'{rng65["ア"]}℃')
+peak = lambda pts: max(pts, key=lambda p: p[1])[0]
+eq('理6-5(5) 最高の時刻', ans(R6, 5, 5), [f'{peak(lines65[ground65])}時', f'{peak(lines65[air65])}時'])
+assert peak(lines65[ground65]) < peak(lines65[air65])
+
+# 6 回路：電圧・抵抗から、豆電球の明るさ（電流の2乗）と電池の持ちを計算する
+def circuit(cell, bulb):
+    V = 2 if cell == 'series' else 1
+    R = {'one': Fraction(1), 'series': Fraction(2), 'parallel': Fraction(1, 2)}[bulb]
+    I = Fraction(V) / R
+    per_bulb = I / 2 if bulb == 'parallel' else I
+    per_cell = I / 2 if cell == 'parallel' else I
+    return per_bulb ** 2, per_cell                                    # 明るさ、電池1個が出す電流（小さいほど長持ち）
+sp66 = dict(zip('アイウエオカ', R6.SETS[5]['fig']['args']['specs']))
+b66 = {k: circuit(*v) for k, v in sp66.items()}
+eq('理6-6(3) 最も明るい', ans(R6, 6, 3), max(b66, key=lambda k: b66[k][0]))
+eq('理6-6(4) 最も暗い', ans(R6, 6, 4), min(b66, key=lambda k: b66[k][0]))
+eq('理6-6(5) カと同じ明るさ', ans(R6, 6, 5), join(k for k in 'アイウエオ' if b66[k][0] == b66['カ'][0]))
+eq('理6-6(6) 長持ち', ans(R6, 6, 6), min('カイエオ', key=lambda k: b66[k][1]))
+eq('理6-6(7) 1つはずしても光る', ans(R6, 6, 7), join(k for k in 'アイウエオカ' if sp66[k][1] == 'parallel'))
+cond66 = {'どう線': True, '10円玉': True, 'ガラスのコップ': False, '消しゴム': False, '鉄くぎ': True, 'わりばし': False}
+eq('理6-6(1) 電気を通す', ans(R6, 6, 1), join(k for k, v in choices(q_text(R6, 6, 1)).items() if cond66[v]))
+
+# 7 太陽・月・星
+eq('理6-7(1) 光が届く時間', ans(R6, 7, 1), f'約{150000000 // 300000}秒（約{150000000 // 300000 // 60}分{150000000 // 300000 % 60}秒）')
+temp7 = {'赤っぽい': 1, '黄色': 2, '白い': 3, '青白い': 4}
+star7 = {r[0]: r[2] for r in R6.SETS[6]['table']['rows'][1:]}
+eq('理6-7(6) 表面温度の高い順', ans(R6, 7, 6), '→'.join(sorted(['ベテルギウス', 'リゲル', 'ベガ'], key=lambda n: -temp7[star7[n]])))
+tri7 = {'こと座': 'ベガ', 'わし座': 'アルタイル', 'はくちょう座': 'デネブ'}
+eq('理6-7(5) 夏の大三角', ans(R6, 7, 5), [tri7[k] for k in R6.SETS[6]['qs'][4]['labels']])
+
+# 8 水の状態変化：グラフの点から
+pts68 = R6.SETS[7]['fig']['args']['pts']
+eq('理6-8(2) ふっとう中の温度', ans(R6, 8, 2), f'{max(v for _, v in pts68)}℃')
+def interp(pts, t):
+    for (t1, v1), (t2, v2) in zip(pts, pts[1:]):
+        if t1 <= t <= t2:
+            return v1 + (v2 - v1) * (t - t1) / (t2 - t1)
+eq('理6-8(3) 7分後', ans(R6, 8, 3), f'{num(interp(pts68, 7))}℃')
+eq('理6-8(6) 水蒸気の体積', ans(R6, 8, 6), f'{10 * 1700 / 1000:g}L')
+eq('理6-8(7) 氷の体積', ans(R6, 8, 7), f'{num(500 * 1.1)}cm³')
+
+# 9 熱の伝わり方：表の距離と時間から
+rows = R6.SETS[8]['table']['rows']
+dist69 = [float(v) for v in rows[1][1:]]
+time69 = [float(v) for v in rows[2][1:]]
+sec_per_cm = time69[0] / dist69[0]
+assert all(abs(t - sec_per_cm * d) < 1e-9 for t, d in zip(time69, dist69))
+assert [d for _, d in R6.SETS[8]['fig']['args']['pts']] == dist69
+eq('理6-9(1) 最初にとける', ans(R6, 9, 1), 'ABCDE'[dist69.index(min(dist69))])
+eq('理6-9(2) 30cm', ans(R6, 9, 2), f'{num(sec_per_cm * 30)}秒')
+eq('理6-9(3) 105秒', ans(R6, 9, 3), f'{num(105 / sec_per_cm)}cm')
+
+# 10 食物連鎖：食べる・食べられるの関係から、並べる
+eat10 = {'アオミドロ': None, 'ミジンコ': 'アオミドロ', 'メダカ': 'ミジンコ', 'ブラックバス': 'メダカ', 'サギ': 'ブラックバス'}
+def depth10(n):
+    return 0 if eat10[n] is None else 1 + depth10(eat10[n])
+nm10 = {k: v.split('（')[0] for k, v in R6.SETS[9]['items']}
+eq('理6-10(7) 食物連鎖', ans(R6, 10, 7), '→'.join(sorted(nm10, key=lambda k: depth10(nm10[k]))))
+eq('理6-10(9) 数が最も少ない', ans(R6, 10, 9), max(nm10, key=lambda k: depth10(nm10[k])))
+fossil10 = {'こはくの中の昆虫': True, '先月とれた貝がら': False, '石になった木の幹': True, '地層の中の恐竜の足あと': True}
+eq('理6-10(4) 化石でない', ans(R6, 10, 4), [k for k, v in choices(q_text(R6, 10, 4)).items() if not fossil10[v]][0])
 
 # ---------------- 社会・大問1 ----------------
 capital = {'青森県': '青森市', '静岡県': '静岡市', '京都府': '京都市', '香川県': '高松市', '新潟県': '新潟市',
