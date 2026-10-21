@@ -11,6 +11,7 @@
 | `tools/tenri_rs_<rika\|shakai><番号>.py` | 大問ごとのデータ（`SETS` と `ANALYSIS`） |
 | `tools/check_tenri_rs.py` | 答えをデータとは別の計算・事実表で検算する |
 | `tools/world_outline.py` | 世界地図の海岸線・国境のデータ（Natural Earth 1:110m。パブリックドメイン）。`fig_world` が使う |
+| `tools/bundle_pdfs.py` | 大問ごとのPDFを、教科・種類（問題／解答解説／出題分析）ごとに1つにまとめる（しおり付き）。出力は `output/まとめ/` |
 | `docs/過去問_読み取りメモ.md` | 2014〜2024年度の理科・社会の全大問の読み取りメモと出題分析 |
 | `fonts/` | BIZ UDゴシック（OFL版）とライセンス文 `OFL.txt` |
 | `output/天理中学校_<理科\|社会>大問<番号>対策/` | 生成したPDF（git管理する） |
