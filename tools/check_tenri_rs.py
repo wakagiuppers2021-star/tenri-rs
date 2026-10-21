@@ -26,8 +26,9 @@ import tenri_rs_shakai2 as S2
 import tenri_rs_shakai3 as S3
 import tenri_rs_shakai4 as S4
 import tenri_rs_shakai5 as S5
+import tenri_rs_sansu4 as M4
 import world_outline
-from build_tenri_rs import SANKEN_ARROWS
+from build_tenri_rs import SANKEN_ARROWS, SHAPES
 
 FAIL = []
 
@@ -1684,6 +1685,182 @@ koto610 = {'札幌': '札幌高等裁判所', '仙台': '仙台高等裁判所',
 eq('社5-10(5) 高等裁判所の数', ans(S5, 10, 5), ['1か所', f'{len(koto610)}か所'])
 area610 = {'大阪高等裁判所': {'大阪', '京都', '兵庫', '奈良', '滋賀', '和歌山'}}
 eq('社5-10(6) 奈良の高等裁判所', ans(S5, 10, 6), [k for k, v in area610.items() if '奈良' in v][0])
+
+# ---------------- 算数・大問4 ----------------
+# 1 円グラフ：合計・割合
+pie = M4.SETS[0]['fig']['args']
+tot41 = pie['total']
+known41 = sum(v for _, v in pie['data'] if v is not None)
+eq('算4-1(1) その他の人数', ans(M4, 1, 1), f'{tot41 - known41}人')
+vals41 = {n: v for n, v in pie['data'] if v is not None}
+pct41 = int(re.search(r'(\d+)%', q_text(M4, 1, 2)).group(1))
+need41 = tot41 * pct41 // 100 - vals41['水泳部']
+eq('算4-1(2) 20%になる部活動', ans(M4, 1, 2), [n for n, v in vals41.items() if v == need41 and n != '水泳部'][0])
+eq('算4-1(3) バスケットボール部の割合', ans(M4, 1, 3), f'{vals41["バスケットボール部"] / tot41 * 100:g}%')
+assert str(tot41) in M4.SETS[0]['lead']
+
+# 2 図形の性質：頂点の座標から、辺・角・対称性を調べる
+def sides_equal(poly):
+    ls = [math.dist(poly[i], poly[(i + 1) % len(poly)]) for i in range(len(poly))]
+    return max(ls) - min(ls) < 1e-9
+def angles_equal(poly):
+    n = len(poly)
+    angs = []
+    for i in range(n):
+        a_, b_, c_ = poly[i - 1], poly[i], poly[(i + 1) % n]
+        v1, v2 = (a_[0] - b_[0], a_[1] - b_[1]), (c_[0] - b_[0], c_[1] - b_[1])
+        angs.append(math.acos((v1[0] * v2[0] + v1[1] * v2[1]) / (math.hypot(*v1) * math.hypot(*v2))))
+    return max(angs) - min(angs) < 1e-9
+def vset(pts):
+    return {(round(x, 6), round(y, 6)) for x, y in pts}
+def point_sym(poly):
+    mx, my = sum(p[0] for p in poly) / len(poly), sum(p[1] for p in poly) / len(poly)
+    return vset(poly) == vset([(2 * mx - x, 2 * my - y) for x, y in poly])
+def axes_count(poly):
+    mx, my = sum(p[0] for p in poly) / len(poly), sum(p[1] for p in poly) / len(poly)
+    cands = [math.atan2(y - my, x - mx) % math.pi for x, y in poly]
+    cands += [math.atan2(p2[0] - p1[0], -(p2[1] - p1[1])) % math.pi for p1, p2 in itertools.combinations(poly, 2)]
+    good = set()
+    for th in cands:
+        cx_, sx_ = math.cos(2 * th), math.sin(2 * th)
+        ref = [(mx + (x - mx) * cx_ + (y - my) * sx_, my + (x - mx) * sx_ - (y - my) * cx_) for x, y in poly]
+        if vset(ref) == vset(poly):
+            good.add(round(th, 4) % round(math.pi, 4))            # 軸の向き（0とπは同じ向き）
+    return len(good)
+names42 = M4.SETS[1]['fig']['args']['shapes']
+lab42 = dict(zip('アイウエオカキク', names42))
+sel42 = lambda f: join(k for k, nm in lab42.items() if f(SHAPES[nm]))
+eq('算4-2(1) 辺がすべて等しい', ans(M4, 2, 1), sel42(sides_equal))
+eq('算4-2(2) 角がすべて等しい', ans(M4, 2, 2), sel42(angles_equal))
+eq('算4-2(3) 点対称', ans(M4, 2, 3), sel42(point_sym))
+eq('算4-2(4) 対称の軸が2本', ans(M4, 2, 4), sel42(lambda p: axes_count(p) == 2))
+
+# 3 仕事算：人・時間で数える
+total43 = 12 * 5 * 9
+assert '12人' in M4.SETS[2]['lead'] and '9日間' in M4.SETS[2]['lead']
+eq('算4-3(1) 人数', ans(M4, 3, 1), f'{Fraction(total43, 6 * 5):g}人')
+rest43 = total43 - 8 * 5 * 3
+eq('算4-3(2) 残りの日数', ans(M4, 3, 2), f'{Fraction(rest43, 10 * 6):g}日')
+first43 = 12 * 5 * 4
+need43 = Fraction(total43 - first43, 6 - 4) / 5                                     # 後半の人数
+eq('算4-3(3) ふやした人数', ans(M4, 3, 3), f'{need43 - 12:g}人')
+
+# 4 文字の対称：線分の集まりを、折る・回す
+def seg_set(segs, f):
+    return {frozenset({(round(f(a_)[0], 6), round(f(a_)[1], 6)), (round(f(b_)[0], 6), round(f(b_)[1], 6))}) for a_, b_ in segs}
+letters44 = {
+    'F': [((0, 0), (0, 2)), ((0, 2), (1.5, 2)), ((0, 1), (1, 1))],
+    'H': [((0, 0), (0, 2)), ((2, 0), (2, 2)), ((0, 1), (2, 1))],
+    'M': [((0, 0), (0, 2)), ((0, 2), (1, .8)), ((1, .8), (2, 2)), ((2, 2), (2, 0))],
+    'S': [((2, 1.9), (.5, 1.9)), ((.5, 1.9), (.5, 1)), ((.5, 1), (1.5, 1)), ((1.5, 1), (1.5, .1)), ((1.5, .1), (0, .1))],
+    'T': [((0, 2), (2, 2)), ((1, 2), (1, 0))],
+    'V': [((0, 2), (1, 0)), ((1, 0), (2, 2))],
+    'X': [((0, 0), (2, 2)), ((0, 2), (2, 0))],
+    'Z': [((0, 2), (2, 2)), ((2, 2), (0, 0)), ((0, 0), (2, 0))],
+}
+ident = lambda p_: p_
+mirrors = [lambda p_: (2 - p_[0], p_[1]), lambda p_: (p_[0], 2 - p_[1]), lambda p_: (p_[1], p_[0]), lambda p_: (2 - p_[1], 2 - p_[0])]
+line_sym = lambda segs: any(seg_set(segs, m) == seg_set(segs, ident) for m in mirrors)
+pt_sym = lambda segs: seg_set(segs, lambda p_: (2 - p_[0], 2 - p_[1])) == seg_set(segs, ident)
+assert M4.SETS[3]['fig']['args']['s'] == ''.join(sorted(letters44, key=lambda k: 'FHMSTVXZ'.index(k)))
+pick44 = lambda f: join(k for k in M4.SETS[3]['fig']['args']['s'] if f(letters44[k]))
+eq('算4-4(1) 線対称', ans(M4, 4, 1), pick44(line_sym))
+eq('算4-4(2) 点対称', ans(M4, 4, 2), pick44(pt_sym))
+eq('算4-4(3) どちらも', ans(M4, 4, 3), pick44(lambda sg: line_sym(sg) and pt_sym(sg)))
+eq('算4-4(4) どちらでもない', ans(M4, 4, 4), pick44(lambda sg: not line_sym(sg) and not pt_sym(sg)))
+
+# 5 斜線部分の面積：多角形はくつ下の公式、円は円周率3.14。格子点を数えた値（円周率は本物）と、近いことも確かめる
+def shoelace(poly):
+    return abs(sum(poly[i][0] * poly[(i + 1) % len(poly)][1] - poly[(i + 1) % len(poly)][0] * poly[i][1] for i in range(len(poly)))) / 2
+def grid_area(inside, x0, x1, y0, y1, n=800):
+    dx, dy = (x1 - x0) / n, (y1 - y0) / n
+    cnt = sum(1 for i in range(n) for j in range(n) if inside(x0 + (i + .5) * dx, y0 + (j + .5) * dy))
+    return cnt * dx * dy
+sp5 = {k: v for k, v in M4.SETS[4]['fig']['args']['specs']}
+a_ = sp5['trap']
+area1 = shoelace([(0, 0), (a_['w'], 0), (a_['w'], a_['h']), (a_['cut'], a_['h'])])
+cut_line = lambda x, y: x >= a_['cut'] * y / a_['h']
+assert abs(grid_area(lambda x, y: cut_line(x, y), 0, a_['w'], 0, a_['h'], 400) - area1) < .2
+s5 = sp5['lens']['s']
+area2 = 2 * (3.14 * s5 * s5 / 4) - s5 * s5
+assert abs(grid_area(lambda x, y: x * x + y * y <= s5 * s5 and (x - s5) ** 2 + (y - s5) ** 2 <= s5 * s5, 0, s5, 0, s5, 500) - area2) < .2
+d5 = sp5['segment']['d']
+r5 = d5 / 2
+area3 = 3.14 * r5 * r5 / 2 - d5 * r5 / 2
+assert abs(grid_area(lambda x, y: x * x + y * y <= r5 * r5 and y > r5 - abs(x), -r5, r5, 0, r5, 500) - area3) < .2   # 三角形の外がわの、半円の部分
+f5 = lambda v: f'{round(v, 2):g}cm²'
+eq('算4-5(1) 台形', ans(M4, 5, 1), f5(area1))
+eq('算4-5(2) 葉の形', ans(M4, 5, 2), f5(area2))
+eq('算4-5(3) 半円−三角形', ans(M4, 5, 3), f5(area3))
+
+# 6 水そう：全体を1として、1分あたりの量
+tA, tAB = [int(x) for x in re.findall(r'(\d+)分かかり', M4.SETS[5]['lead'])]
+rA = Fraction(1, tA)
+rB = Fraction(1, tAB) - rA
+eq('算4-6(1) B管だけ', ans(M4, 6, 1), f'{1 / rB:g}分')
+a10, b6 = [int(x) for x in re.findall(r'(\d+)分間', q_text(M4, 6, 2))]
+left = 1 - a10 * rA - b6 * rB
+t62 = left / (rA + rB)
+eq('算4-6(2) 途中でかえる', ans(M4, 6, 2), f'{int(t62)}分{int((t62 - int(t62)) * 60)}秒後')
+a5 = int(re.search(r'(\d+)分後から', q_text(M4, 6, 3)).group(1))
+eq('算4-6(3) 5分後からB管も', ans(M4, 6, 3), f'{a5 + (1 - a5 * rA) / (rA + rB):g}分後')
+
+# 7 割合：原価・利益・値引き
+cost = int(re.search(r'(\d+)円の品物', M4.SETS[6]['lead']).group(1))
+rate = int(re.search(r'(\d)割の利益', M4.SETS[6]['lead']).group(1)) / 10
+price = round(cost * (1 + rate))
+eq('算4-7(1) 定価', ans(M4, 7, 1), f'{price}円')
+disc = int(re.search(r'(\d)割引き', q_text(M4, 7, 2)).group(1)) / 10
+sell = round(price * (1 - disc))
+eq('算4-7(2) 売り値', ans(M4, 7, 2), f'{sell}円')
+eq('算4-7(3) 利益', ans(M4, 7, 3), f'{sell - cost}円')
+sell4 = int(re.search(r'(\d+)円にする', q_text(M4, 7, 4)).group(1))
+eq('算4-7(4) 何%引き', ans(M4, 7, 4), f'{(price - sell4) / price * 100:g}%')
+
+# 8 平均・中央値・最頻値
+import statistics
+data8 = [int(x) for x in re.findall(r'\d+', M4.SETS[7]['lead'].split('\n')[1])]
+assert len(data8) == 10
+eq('算4-8(1) 平均', ans(M4, 8, 1), f'{statistics.mean(data8):g}m')
+eq('算4-8(2) 最頻値', ans(M4, 8, 2), f'{statistics.mode(data8):g}m')
+eq('算4-8(3) 中央値', ans(M4, 8, 3), f'{statistics.median(data8):g}m')
+a8 = (statistics.mean(data8) + 1) * 11 - sum(data8)
+eq('算4-8(4) Aさんの記録', ans(M4, 8, 4), f'{a8:g}m')
+eq('算4-8(5) 11人の中央値', ans(M4, 8, 5), f'{statistics.median(data8 + [a8]):g}m')
+
+# 9 マッチ棒：正方形を横にならべた図の、辺の数を数える
+def sticks(n):
+    edges = set()
+    for k in range(n):
+        edges |= {((k, 0), (k + 1, 0)), ((k, 1), (k + 1, 1)), ((k, 0), (k, 1)), ((k + 1, 0), (k + 1, 1))}
+    return len(edges)
+assert [sticks(n) for n in (1, 2, 3)] == [4, 7, 10] and all(sticks(n) == 3 * n + 1 for n in range(1, 60))
+eq('算4-9(1) 6個', ans(M4, 9, 1), f'{sticks(6)}本')
+eq('算4-9(2) 50個', ans(M4, 9, 2), f'{sticks(50)}本')
+eq('算4-9(3) 100本', ans(M4, 9, 3), f'{[n for n in range(1, 200) if sticks(n) == 100][0]}個')
+eq('算4-9(4) 253本', ans(M4, 9, 4), f'{[n for n in range(1, 300) if sticks(n) == 253][0]}')
+
+# 10 速さのグラフ：折れ線から速さを求め、追いつく時刻を、区間ごとに調べる
+pts10 = M4.SETS[9]['fig']['args']['pts']
+seg10 = list(zip(pts10, pts10[1:]))
+speed10 = [Fraction(b_[1] - a_[1], b_[0] - a_[0]) for a_, b_ in seg10]
+eq('算4-10(1) 休けい前', ans(M4, 10, 1), f'分速{speed10[0]:g}m')
+eq('算4-10(2) 休けい後', ans(M4, 10, 2), f'分速{speed10[2]:g}m')
+def pos10(t):
+    for (t1, y1), (t2, y2) in seg10:
+        if t1 <= t <= t2:
+            return Fraction(y1) + Fraction(y2 - y1, t2 - t1) * (t - t1)
+start10 = int(re.search(r'(\d+)分後に', q_text(M4, 10, 3)).group(1))
+v10 = int(re.search(r'分速(\d+)m', q_text(M4, 10, 3)).group(1))
+catch10 = None
+for (t1, y1), (t2, y2) in seg10:                      # 区間ごとに、2人の道のりが等しくなる時刻を求める
+    sl = Fraction(y2 - y1, t2 - t1)
+    t_ = (y1 - sl * t1 + v10 * start10) / (v10 - sl)
+    if max(t1, start10) <= t_ <= t2 and catch10 is None:
+        catch10 = t_
+assert catch10 is not None and v10 * (catch10 - start10) == pos10(catch10)
+eq('算4-10(3) 追いつく時刻', ans(M4, 10, 3), f'{int(catch10)}分{int((catch10 - int(catch10)) * 60)}秒後')
+eq('算4-10(4) 追いついた場所', ans(M4, 10, 4), f'{pos10(catch10):g}m')
 
 # ---------------- 形式（tools/tenri_rs_*.py をすべて） ----------------
 for f in sorted(Path(__file__).resolve().parent.glob('tenri_rs_*.py')):

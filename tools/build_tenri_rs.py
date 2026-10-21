@@ -43,7 +43,7 @@ pdfmetrics.registerFont(TTFont('JP', find_font(ROOT / 'fonts/BIZUDGothic-Regular
 pdfmetrics.registerFont(TTFont('JPB', find_font(ROOT / 'fonts/BIZUDGothic-Bold.ttf',
                                                 Path('C:/Windows/Fonts/BIZ-UDGothicB.ttc')), subfontIndex=0))
 
-SUBJECTS = {'rika': '理科', 'shakai': '社会'}
+SUBJECTS = {'rika': '理科', 'shakai': '社会', 'sansu': '算数'}
 DRY = False          # True のときは描かずに高さだけ測る
 LAYOUT = []          # (ファイル, ページ, x0, x1, y0, y1, 文字列)
 BOTTOM = 52          # 本文がこれより下に来たらはみ出し
@@ -1554,6 +1554,170 @@ def fig_eye(c, x, top, w, h):
         _badge(c, bx, by, lab)
 
 
+# ---------- 算数の図 ----------
+def _hatch(c, clip, x0, y0, x1, y1, gap=4.2):
+    """clip（パス）の内がわに、右上がりの斜線を引く。"""
+    c.saveState()
+    c.clipPath(clip, stroke=0, fill=0)
+    setline(c, .45, MUTED)
+    k = x0 - (y1 - y0)
+    while k < x1:
+        c.line(k, y0, k + (y1 - y0), y1)
+        k += gap
+    c.restoreState()
+
+
+def _quarter(c, cx, cy, r, a0):
+    p = c.beginPath()
+    p.moveTo(cx, cy)
+    p.lineTo(cx + r * math.cos(math.radians(a0)), cy + r * math.sin(math.radians(a0)))
+    p.arcTo(cx - r, cy - r, cx + r, cy + r, a0, 90)
+    p.close()
+    return p
+
+
+def fig_piechart(c, x, top, w, h, data=(), total=None, unit='人'):
+    """円グラフ。data は (名前, 値)。値が None のものは、全体から残りを求めるらんで、数は書かない。右まわりに、真上から。"""
+    known = sum(v for _, v in data if v is not None)
+    total = total or known
+    cx, cy = x + w / 2, top - h / 2
+    R = min(h / 2 - 24, 62)
+    cum = 0
+    for k, (name, v) in enumerate(data):
+        val = v if v is not None else total - known
+        a1 = 90 - (cum + val) * 360 / total
+        span = val * 360 / total
+        c.setFillColor(colors.white if v is None else (PALE if k % 2 == 0 else colors.HexColor('#DCE2E6')))
+        setline(c, .9)
+        c.wedge(cx - R, cy - R, cx + R, cy + R, a1, span, stroke=1, fill=1)
+        mid = math.radians(90 - (cum + val / 2) * 360 / total)
+        lx, ly = cx + (R + 12) * math.cos(mid), cy + (R + 12) * math.sin(mid)
+        setline(c, .5, MUTED)
+        c.line(cx + R * math.cos(mid), cy + R * math.sin(mid), lx, ly)
+        label = name
+        sub = '' if v is None else f'{v}{unit}'
+        right = math.cos(mid) >= 0
+        tx = lx + 2 if right else lx - 2
+        if right:
+            text(c, tx, ly + 1, label, 9.5)
+            text(c, tx, ly - 10, sub, 9.5)
+        else:
+            text(c, tx - tw(label, 9.5), ly + 1, label, 9.5)
+            text(c, tx - tw(sub, 9.5), ly - 10, sub, 9.5)
+        cum += val
+
+
+SHAPES = {                      # 平面図形の頂点（検算でも、この座標から対称性を調べる）
+    '正三角形': [(0, 0), (2, 0), (1, math.sqrt(3))],
+    '直角二等辺三角形': [(0, 0), (2, 0), (0, 2)],
+    '正方形': [(0, 0), (2, 0), (2, 2), (0, 2)],
+    '長方形': [(0, 0), (3, 0), (3, 2), (0, 2)],
+    'ひし形': [(0, 1), (1.5, 0), (3, 1), (1.5, 2)],
+    '平行四辺形': [(0, 0), (2.5, 0), (3.5, 2), (1, 2)],
+    '等脚台形': [(0, 0), (3, 0), (2.4, 2), (0.6, 2)],
+    '正六角形': [(2, 0), (1, math.sqrt(3)), (-1, math.sqrt(3)), (-2, 0), (-1, -math.sqrt(3)), (1, -math.sqrt(3))],
+}
+
+
+def fig_symshapes(c, x, top, w, h, shapes=(), per=4):
+    """平面図形をならべて、ア・イ・…の記号と名前をつける。"""
+    n = len(shapes)
+    rows = math.ceil(n / per)
+    cw, rh = w / per, h / rows
+    for i, name in enumerate(shapes):
+        r, k = divmod(i, per)
+        pts = SHAPES[name]
+        xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+        sc = 38 / max(max(xs) - min(xs), max(ys) - min(ys)) * (1 if max(xs) - min(xs) < 4 else 1)
+        sc = min(sc, 18)
+        cx0 = x + k * cw + cw / 2 - (max(xs) + min(xs)) / 2 * sc
+        cy0 = top - r * rh - rh / 2 + 4 - (max(ys) + min(ys)) / 2 * sc
+        c.setFillColor(colors.white)
+        setline(c, 1.1)
+        c.drawPath(_poly(c, [(cx0 + px * sc, cy0 + py * sc) for px, py in pts]), stroke=1, fill=1)
+        text(c, x + k * cw + cw / 2, top - r * rh - rh + 10, f'{"アイウエオカキク"[i]} {name}', 9.5, center=True)
+
+
+def fig_letters(c, x, top, w, h, s='BHKNSTXZ'):
+    """大きなアルファベットを、わくの中にならべる。"""
+    bw = min(w - 80, 46 * len(s) + 24)
+    bx = x + (w - bw) / 2
+    setline(c, 1)
+    c.setFillColor(colors.white)
+    c.rect(bx, top - h + 6, bw, h - 10, stroke=1, fill=1)
+    step = (bw - 24) / len(s)
+    for k, ch in enumerate(s):
+        text(c, bx + 12 + step * (k + .5), top - h / 2 - 12, ch, 30, bold=True, center=True)
+
+
+def fig_areas(c, x, top, w, h, specs=()):
+    """斜線部分の面積の図を、(1)(2)(3)とならべる。specs は (種類, 数値のdict)。"""
+    n = len(specs)
+    pw = w / n
+    for k, (kind, a) in enumerate(specs):
+        px = x + k * pw
+        text(c, px + 4, top - 11, f'({k + 1})', 10, bold=True)
+        if kind == 'trap':                                   # 長方形の中の、四角形（上の左はしを切りとる）
+            W, H, cut = a['w'], a['h'], a['cut']
+            sc = min((pw - 50) / W, (h - 50) / H)
+            ox, oy = px + (pw - W * sc) / 2, top - 24 - H * sc
+            poly = [(ox, oy), (ox + W * sc, oy), (ox + W * sc, oy + H * sc), (ox + cut * sc, oy + H * sc)]
+            _hatch(c, _poly(c, poly), ox, oy, ox + W * sc, oy + H * sc)
+            setline(c, 1.1)
+            c.rect(ox, oy, W * sc, H * sc, stroke=1, fill=0)
+            c.drawPath(_poly(c, poly), stroke=1, fill=0)
+            text(c, ox + W * sc / 2, oy - 12, f'{W:g}cm', 9, center=True)
+            text(c, ox + W * sc + 4, oy + H * sc / 2 - 3, f'{H:g}cm', 9)
+            text(c, ox + cut * sc / 2, oy + H * sc + 4, f'{cut:g}cm', 9, center=True)
+        elif kind == 'lens':                                 # 正方形と、向かい合う頂点を中心とする2つの四分円
+            s_ = a['s']
+            sc = min((pw - 40) / s_, (h - 46) / s_)
+            ox, oy = px + (pw - s_ * sc) / 2, top - 24 - s_ * sc
+            c.saveState()
+            c.clipPath(_quarter(c, ox, oy, s_ * sc, 0), stroke=0, fill=0)
+            _hatch(c, _quarter(c, ox + s_ * sc, oy + s_ * sc, s_ * sc, 180), ox, oy, ox + s_ * sc, oy + s_ * sc)
+            c.restoreState()
+            setline(c, 1.1)
+            c.rect(ox, oy, s_ * sc, s_ * sc, stroke=1, fill=0)
+            c.arc(ox - s_ * sc, oy - s_ * sc, ox + s_ * sc, oy + s_ * sc, 0, 90)
+            c.arc(ox, oy, ox + 2 * s_ * sc, oy + 2 * s_ * sc, 180, 90)
+            text(c, ox + s_ * sc / 2, oy - 12, f'{s_:g}cm', 9, center=True)
+        elif kind == 'segment':                              # 半円から、直径を底辺とする三角形をひく
+            d = a['d']
+            sc = min((pw - 40) / d, (h - 56) / (d / 2))
+            ox, oy = px + (pw - d * sc) / 2, top - 30 - d / 2 * sc
+            semi = c.beginPath()
+            semi.moveTo(ox + d * sc, oy)
+            semi.arcTo(ox, oy - d / 2 * sc, ox + d * sc, oy + d / 2 * sc, 0, 180)
+            semi.close()
+            _hatch(c, semi, ox, oy, ox + d * sc, oy + d / 2 * sc)
+            c.setFillColor(colors.white)
+            setline(c, 1.1)
+            c.drawPath(_poly(c, [(ox, oy), (ox + d * sc, oy), (ox + d * sc / 2, oy + d / 2 * sc)]), stroke=1, fill=1)
+            c.arc(ox, oy - d / 2 * sc, ox + d * sc, oy + d / 2 * sc, 0, 180)
+            c.line(ox, oy, ox + d * sc, oy)
+            text(c, ox + d * sc / 2, oy - 12, f'{d:g}cm', 9, center=True)
+
+
+def fig_matchsticks(c, x, top, w, h, counts=(1, 2, 3)):
+    """同じ長さの棒で、正方形を横にならべた図。counts は、ならべる正方形の個数。"""
+    side = 22
+    gap = 26
+    total = sum(n * side + side for n in counts) + gap * (len(counts) - 1) + 30
+    cx = x + (w - total) / 2
+    by = top - h / 2 - side / 2
+    for n in counts:
+        setline(c, 2.2)
+        for k in range(n + 1):
+            c.line(cx + k * side, by, cx + k * side, by + side)
+        for k in range(n):
+            c.line(cx + k * side, by, cx + (k + 1) * side, by)
+            c.line(cx + k * side, by + side, cx + (k + 1) * side, by + side)
+        text(c, cx + n * side / 2, by - 15, f'{n}個', 9.5, center=True)
+        cx += n * side + gap
+    text(c, cx - 4, by + side / 2 - 3, '…', 12)
+
+
 FIGS = {'monochord': fig_monochord, 'circuits': fig_circuits, 'moon': fig_moon,
         'ice_graph': fig_ice_graph, 'pendulum': fig_pendulum,
         'strata': fig_strata, 'magnet': fig_magnet, 'lever': fig_lever, 'sanken': fig_sanken,
@@ -1562,7 +1726,8 @@ FIGS = {'monochord': fig_monochord, 'circuits': fig_circuits, 'moon': fig_moon,
         'circuitset': fig_circuitset, 'ammeter': fig_ammeter, 'circulation': fig_circulation, 'cans': fig_cans,
         'mirror': fig_mirror, 'digest': fig_digest, 'watercycle': fig_watercycle, 'pulleys': fig_pulleys, 'shadow': fig_shadow,
         'leverbar': fig_leverbar, 'balance': fig_balance, 'cylinder': fig_cylinder, 'rods': fig_rods,
-        'fuleaf': fig_fuleaf, 'river': fig_river, 'microscope': fig_microscope, 'lens': fig_lens, 'moonphases': fig_moonphases, 'eye': fig_eye}
+        'fuleaf': fig_fuleaf, 'river': fig_river, 'microscope': fig_microscope, 'lens': fig_lens, 'moonphases': fig_moonphases, 'eye': fig_eye,
+        'piechart': fig_piechart, 'symshapes': fig_symshapes, 'letters': fig_letters, 'areas': fig_areas, 'matchsticks': fig_matchsticks}
 
 
 # ---------- 表・本文ブロック ----------
@@ -1676,7 +1841,7 @@ def page_header(c, subj, dai, title, label, idx, total, year_note):
 
 def render_problem(c, subj, dai, i, st, total, qs):
     page_header(c, subj, dai, f'第{i:02d}セット　{st["title"]}', '問題', i, total,
-                f'{st["year"]}年度 大問{dai}の出題形式を参考にした独自教材（過去問の転載ではありません）')
+                st.get('note') or f'{st["year"]}年度 大問{dai}の出題形式を参考にした独自教材（過去問の転載ではありません）')
     text(c, LM, H - 109, '名前：____________________  日付：____／____  時間：____分', 9.5)
     y = H - 130
     lead_lines = wrap(st['lead'], RM - LM - 20, 10.5)
@@ -1720,6 +1885,15 @@ def render_problem(c, subj, dai, i, st, total, qs):
     y -= qs + 2
     for n, q in enumerate(st['qs'], 1):
         y = draw_question(c, y, n, q, qs)
+        sp = q.get('space', st.get('space', 0))
+        if sp:                                          # 算数：式・考え方を書く、計算らん
+            top_ = y + qs * 1.55 - 8
+            if not DRY:
+                setline(c, .5, LINE, (2, 2))
+                c.rect(LM + 26, top_ - sp, RM - LM - 26, sp, stroke=1, fill=0)
+                c.setDash()
+                text(c, LM + 32, top_ - 10, '式・考え方', 8, color=MUTED)
+            y = top_ - sp - 12
         if not DRY and n < len(st['qs']):
             setline(c, .3, LINE)
             c.line(LM, y + qs + 4, RM, y + qs + 4)
@@ -1758,7 +1932,7 @@ def ans_text(q):
 
 def render_answer(c, subj, dai, i, st, total, s1, s2):
     page_header(c, subj, dai, f'解答・解説　第{i:02d}セット　{st["title"]}', '解答', i, total,
-                f'{st["year"]}年度 大問{dai}の出題形式を参考にした独自教材')
+                st.get('note') or f'{st["year"]}年度 大問{dai}の出題形式を参考にした独自教材')
     text(c, LM, H - 108, '（　）の中は別の答え方・正解にしてよい例です。記述は、解答例と同じ内容が書けていれば正解とします。'
          if any(q['kind'] == 'long' for q in st['qs']) else '（　）の中は別の答え方・正解にしてよい例です。', 8.5, color=MUTED)
     y = H - 132
@@ -1801,7 +1975,7 @@ def build_analysis(mod, key, dai, out):
     c.setTitle(fn[:-4]); c.setAuthor('若木塾 教材制作')
     an = mod.ANALYSIS
     page_header(c, subj, dai, f'出題分析と使い方　{subj}・大問{dai}', '分析', 1, 1,
-                '2014〜2024年度の過去問をもとにした分析（設問は独自に作成）')
+                an.get('footer', '2014〜2024年度の過去問をもとにした分析（設問は独自に作成）'))
     y = H - 118
     y, _ = para(c, LM, y, an['summary'], RM - LM, 10.5, 17)
     y -= 6
