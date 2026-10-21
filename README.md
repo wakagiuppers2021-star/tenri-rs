@@ -9,14 +9,16 @@
 |---|---|
 | `tools/build_tenri_rs.py` | PDFを作るスクリプト（レイアウト・図・検査） |
 | `tools/tenri_rs_<rika\|shakai\|sansu\|kokugo><番号>.py` | 大問ごとのデータ（`SETS` と `ANALYSIS`） |
-| `tools/check_tenri_rs.py` | 答えをデータとは別の計算・事実表で検算する |
+| `tools/check_tenri_rs.py` | 答えをデータとは別の計算・事実表で検算する（起動時に `check_sansu*.py` も読み込んで走らせる） |
+| `tools/check_common.py`・`tools/check_sansu<番号>.py` | 算数の検算。共通部品（`eq`・`val`＝分数・小数・かっこの式の計算ほか）と、大問ごとの検算（単独でも `cd tools && python -X utf8 check_sansu<番号>.py` で動く） |
+| `tools/figs_geo.py`・`tools/figs_sansu<番号>.py` | 算数の図。`geo`＝センチメートル単位の座標で、多角形・円・おうぎ形・重なり・角・方眼を描く汎用の図。大問ごとの専用の図は `s<番号>_` で始まる名前（builder が `figs_*.py` を自動で読み込む） |
 | `tools/ja_read.py` | 国語の漢字の検算に使う、熟語の読みの分解（音読み・訓読み。連濁・促音に対応） |
 | `tools/ja_grammar.py` | 国語の文法の検算に使う、形態素解析（janome）と、学校文法への読みかえ・表 |
 | `tools/kanji_grade.py` | 漢字の学年配当（教育漢字1026字ほか）・部首番号・画数（KANJIDIC2、CC BY-SA 4.0）。国語の漢字の検算に使う |
 | `tools/world_outline.py` | 世界地図の海岸線・国境のデータ（Natural Earth 1:110m。パブリックドメイン）。`fig_world` が使う |
 | `tools/bundle_pdfs.py` | 大問ごとのPDFを、教科・種類（問題／解答解説／出題分析）ごとに1つにまとめる（しおり付き）。出力は `output/まとめ/` |
 | `docs/過去問_読み取りメモ.md` | 2014〜2024年度の理科・社会の全大問の読み取りメモと出題分析 |
-| `docs/過去問_読み取りメモ_算数.md` | 2014〜2024年度の算数の全大問の読み取りメモ（大問4の年度別一覧つき） |
+| `docs/過去問_読み取りメモ_算数.md` | 2014〜2024年度の算数の全大問の読み取りメモ（大問4の年度別一覧つき）。算数の大問1〜10は、これと、各 `tenri_rs_sansu<番号>.py` の冒頭のdocstringを根拠に作った |
 | `docs/過去問_読み取りメモ_国語.md` | 国語の過去問の読み取りメモ（2014〜2024年度。2014年度は解答・解説ページだけ） |
 | `fonts/` | BIZ UDゴシック（OFL版）とライセンス文 `OFL.txt` |
 | `output/天理中学校_<理科\|社会>大問<番号>対策/` | 生成したPDF（git管理する） |

@@ -8,7 +8,7 @@
 
 - レイアウト・図・検査：`tools/build_tenri_rs.py`
 - 大問ごとのデータ：`tools/tenri_rs_<rika|shakai|sansu|kokugo><番号>.py`
-- 検算：`tools/check_tenri_rs.py`
+- 検算：`tools/check_tenri_rs.py`（算数は、大問ごとの `tools/check_sansu<番号>.py` と共通部品 `tools/check_common.py`。起動時に自動で読み込まれる）
 - 過去問の読み取り：`docs/過去問_読み取りメモ.md`（理科・社会）・`docs/過去問_読み取りメモ_算数.md`（算数。2014〜2024年度）。過去問のスキャンはリポジトリにない。これらのメモだけを根拠にする。
 - 算数のデータは `tools/tenri_rs_sansu<番号>.py`（`build_tenri_rs.py sansu <番号>`）。国語は `tools/tenri_rs_kokugo<番号>.py`（`build_tenri_rs.py kokugo <番号>`）。国語の過去問の読み取りは `docs/過去問_読み取りメモ_国語.md`。漢字の学年配当・部首・画数は `tools/kanji_grade.py`。
 - `output/` のPDFは生成物。直接編集しない。
