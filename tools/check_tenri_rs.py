@@ -2197,8 +2197,8 @@ def kan2(n_):
     return ('' if h_ == 1 else d_[h_] if h_ else '') + ('百' if h_ else '') + ('' if t_ == 1 else d_[t_] if t_ else '') + ('十' if t_ else '') + (d_[u_] if u_ else '')
 
 
-POLITE = ('です', 'ます', 'ました', 'でした', 'ません', 'でしょう', 'ましょう', 'ください')
-FORBID = set('「」『』（）()ー…―') | set('0123456789') | set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ')
+POLITE = ('です', 'ます', 'ました', 'でした', 'ません', 'でしょう', 'ましょう', 'ください', 'まして')
+FORBID = set('「」『』（）()…―%％') | set('0123456789') | set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ')
 
 
 def walk(route_):
@@ -2234,8 +2234,50 @@ def check_essay(mod):
         if not lo_ <= len(body) <= hi_:
             bad.append((i_, '例文の字数', len(body), lo_, hi_))
         paras_ = sample.split('\n')
-        if len(paras_) != m_['paras'] or not all(paras_) or ('二段落' in ' '.join(ess_['conds'])) != (m_['paras'] == 2):
-            bad.append((i_, '段落の数', len(paras_), m_['paras']))
+        mp_ = re.search(r'([一二三四五])段落(?:構成)?で書くこと', ' '.join(ess_['conds']))
+        exp_p_ = '一二三四五'.index(mp_.group(1)) + 1 if mp_ else 1
+        if len(paras_) != m_['paras'] or not all(paras_) or exp_p_ != m_['paras']:
+            bad.append((i_, '段落の数', len(paras_), m_['paras'], exp_p_))
+        if m_.get('starts'):                                                    # 段落の書き出し（なぜなら・たとえば・だから）
+            if len(m_['starts']) != len(paras_) or not all(pa_.startswith(st2_) for pa_, st2_ in zip(paras_, m_['starts'])) \
+                    or any(st2_ and f'「{st2_}」' not in ' '.join(ess_['conds']) for st2_ in m_['starts']):
+                bad.append((i_, '段落の書き出し', m_['starts'], [pa_[:5] for pa_ in paras_]))
+        if m_.get('order'):                                                     # 例文の中での、言葉の出てくる順番
+            pos2_ = [body.find(w2_) for w2_ in m_['order']]
+            if any(x2_ < 0 for x2_ in pos2_) or pos2_ != sorted(pos2_):
+                bad.append((i_, '言葉の出てくる順番', m_['order'], pos2_))
+        if m_.get('bar'):                                                       # 棒グラフ：例文の数字と、グラフの値
+            charts_ = [f2_['args'] for f2_ in ess_['material']['items']]
+
+            def bar_value(ser_, cat_):
+                for ch_ in charts_:
+                    if cat_ in ch_['cats']:
+                        for nm_, vals_ in ch_['series']:
+                            if nm_ == ser_:
+                                return vals_[ch_['cats'].index(cat_)]
+                return None
+            for w_, v_, ser_, cat_ in m_['bar']['say']:
+                if bar_value(ser_, cat_) != v_ or w_ != kan2(v_) + 'パーセント' or w_ not in body:
+                    bad.append((i_, '棒グラフの数字', w_, v_, ser_, cat_, bar_value(ser_, cat_)))
+            hi2_, lo2_, cat2_ = m_['bar']['cmp']
+            if not (bar_value(hi2_, cat2_) > bar_value(lo2_, cat2_)) or hi2_ not in body or lo2_ not in body or 'ほうが多く' not in body:
+                bad.append((i_, '棒グラフの比べ方', m_['bar']['cmp']))
+            if any(not 0 <= v2_ <= ch2_['ymax'] for ch2_ in charts_ for _, vs2_ in ch2_['series'] for v2_ in vs2_) \
+                    or any(sum(vs3_ for vs3_ in vs2_) != 100 for ch2_ in charts_[:1] for _, vs2_ in ch2_['series']):
+                bad.append((i_, '棒グラフの値（0〜最大、表①の各系列は合計100）'))
+        if m_.get('name'):                                                      # 自己紹介：名前の漢字を、部首と熟語で説明
+            nm_chars_ = [k2_ for k2_, _, _, _ in m_['name']]
+            if ''.join(nm_chars_) not in ess_['topic'].replace(' ', ''):
+                bad.append((i_, '名前の漢字が、お題の名前と合わない', nm_chars_))
+            for k2_, rad2_, word2_, rest2_ in m_['name']:
+                ok2_ = (f'{k2_}という字は、{rad2_}に{word2_}の{rest2_}です。' in body and KG.INFO[k2_][0] == RAD_NUM[rad2_] and rest2_ in word2_
+                        and KG.INFO[k2_][1] == RAD_STROKE[rad2_] + KG.INFO[rest2_][1])
+                if not ok2_:
+                    bad.append((i_, '名前の漢字の説明', k2_, rad2_, word2_, rest2_))
+            ex_ = re.search(r'「(.)」という字は、(.+?)に(.+?)の(.)です。', ' '.join(ess_['conds']))   # 条件にある、（例）
+            if not ex_ or KG.INFO[ex_.group(1)][0] != RAD_NUM[ex_.group(2)] or KG.INFO[ex_.group(1)][1] != RAD_STROKE[ex_.group(2)] + KG.INFO[ex_.group(4)][1] \
+                    or ex_.group(4) not in ex_.group(3):
+                bad.append((i_, '条件の（例）'))
         if FORBID & set(body):
             bad.append((i_, '縦書きにしにくい文字', sorted(FORBID & set(body))))
         if non_elem(body):

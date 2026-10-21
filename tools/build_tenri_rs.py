@@ -1944,6 +1944,74 @@ def fig_roadmap(c, x, top, w, h, cols=4, rows=3, labels=(), blocked=()):
     text(c, x + 12, top - 38, '北', 9, bold=True, center=True)
 
 
+def fig_barchart(c, x, top, w, h, title='', cats=(), series=(), ymax=80, step=20):
+    """棒グラフ（パーセント）。series は (名前, 値のならび)。1本だけのときは、名前を出さない。値は、棒の上に出す。"""
+    text(c, x, top - 9, title, 9, bold=True)
+    ly = top - 22
+    if len(series) > 1:                                      # 凡例
+        lx = x + 6
+        for k, (nm, _) in enumerate(series):
+            if not DRY:
+                c.setFillColor(('#C2C9CE', '#56616C')[k % 2] and colors.HexColor(('#C2C9CE', '#56616C')[k % 2]))
+                setline(c, .6)
+                c.rect(lx, ly - 1, 8, 8, fill=1, stroke=1)
+            text(c, lx + 11, ly, nm, 8)
+            lx += 22 + tw(nm, 8)
+        ly -= 4
+    lab_h = 22
+    py0, py1 = top - h + lab_h, ly - 6                       # 軸の下・上
+    px0, px1 = x + 22, x + w - 4
+    if not DRY:
+        setline(c, .8)
+        c.line(px0, py0, px0, py1)
+        c.line(px0, py0, px1, py0)
+    for v in range(0, ymax + 1, step):
+        yy = py0 + (py1 - py0) * v / ymax
+        text(c, px0 - 4 - tw(str(v), 7), yy - 2.4, str(v), 7, color=MUTED)
+        if not DRY and v:
+            setline(c, .3, LINE, (1, 2))
+            c.line(px0, yy, px1, yy)
+            c.setDash()
+    slot = (px1 - px0) / len(cats)
+    bw = slot * .7 / len(series)
+    for i, cat in enumerate(cats):
+        for k, (_, vals) in enumerate(series):
+            bx = px0 + slot * i + slot * .15 + k * bw
+            bh = (py1 - py0) * vals[i] / ymax
+            if not DRY:
+                c.setFillColor(colors.HexColor(('#C2C9CE', '#56616C')[k % 2]))
+                setline(c, .6)
+                c.rect(bx, py0, bw, bh, fill=1, stroke=1)
+            text(c, bx + bw / 2, py0 + bh + 2, str(vals[i]), 6.5, center=True)
+        for r, ln in enumerate(wrap(cat, slot + 2, 6.8)[:3]):
+            text(c, px0 + slot * (i + .5), py0 - 8 - 7.5 * r, ln, 6.8, center=True)
+
+
+def fig_shapes3(c, x, top, w, h, kinds=('half', 'circle', 'dot')):
+    """正方形の中の図形を、横に3つ。half＝左下の半分（対角線の左下がわ）をぬりつぶす／circle＝4つの辺にふれる円／dot＝まん中の小さな黒い円。"""
+    side = min((w - 40) / 3, h - 10)
+    gap = (w - 3 * side) / 4
+    for k, kind in enumerate(kinds):
+        ox, oy = x + gap + k * (side + gap), top - h + 4
+        setline(c, 1.1)
+        if kind == 'half' and not DRY:
+            c.setFillColor(INK)
+            c.drawPath(_poly(c, [(ox, oy), (ox, oy + side), (ox + side, oy)]), stroke=0, fill=1)
+        if not DRY:
+            c.setFillColor(colors.white if kind != 'half' else INK)
+            if kind != 'half':
+                c.rect(ox, oy, side, side, fill=0, stroke=1)
+            else:
+                c.rect(ox, oy, side, side, fill=0, stroke=1)
+                setline(c, 1.1)
+                c.line(ox, oy + side, ox + side, oy)
+            if kind == 'circle':
+                c.circle(ox + side / 2, oy + side / 2, side / 2, stroke=1, fill=0)
+            if kind == 'dot':
+                c.setFillColor(INK)
+                c.circle(ox + side / 2, oy + side / 2, side * .12, stroke=0, fill=1)
+
+
 FIGS = {'monochord': fig_monochord, 'circuits': fig_circuits, 'moon': fig_moon,
         'ice_graph': fig_ice_graph, 'pendulum': fig_pendulum,
         'strata': fig_strata, 'magnet': fig_magnet, 'lever': fig_lever, 'sanken': fig_sanken,
@@ -1953,7 +2021,7 @@ FIGS = {'monochord': fig_monochord, 'circuits': fig_circuits, 'moon': fig_moon,
         'mirror': fig_mirror, 'digest': fig_digest, 'watercycle': fig_watercycle, 'pulleys': fig_pulleys, 'shadow': fig_shadow,
         'leverbar': fig_leverbar, 'balance': fig_balance, 'cylinder': fig_cylinder, 'rods': fig_rods,
         'fuleaf': fig_fuleaf, 'river': fig_river, 'microscope': fig_microscope, 'lens': fig_lens, 'moonphases': fig_moonphases, 'eye': fig_eye,
-        'roadmap': fig_roadmap, 'piechart': fig_piechart, 'symshapes': fig_symshapes, 'letters': fig_letters, 'areas': fig_areas, 'matchsticks': fig_matchsticks}
+        'roadmap': fig_roadmap, 'barchart': fig_barchart, 'shapes3': fig_shapes3, 'piechart': fig_piechart, 'symshapes': fig_symshapes, 'letters': fig_letters, 'areas': fig_areas, 'matchsticks': fig_matchsticks}
 
 
 # ---------- 表・本文ブロック ----------
@@ -2118,6 +2186,9 @@ def draw_genko(c, gx, top):
         c.line(gx + cols * cs / 2, top, gx + cols * cs / 2, top - rows * cs)
     for r in (5, 10, 15, 20):                                # 1行の字数の目じるし
         text(c, gx - 5 - tw(str(r), 7), top - (r - .5) * cs - 2.4, str(r), 7, color=MUTED)
+    for k in range(cols):                                    # 右から数えた、字数（20字ずつ）の目じるし
+        lab = str((k + 1) * 20)
+        text(c, gx + (cols - k - .5) * cs - tw(lab, 6.5) / 2, top - rows * cs - 8.5, lab, 6.5, color=MUTED)
 
 
 def render_essay_problem(c, subj, dai, i, st, total):
@@ -2147,7 +2218,7 @@ def render_essay_problem(c, subj, dai, i, st, total):
     yy -= 6
     text(c, LM, yy, '条件', 10, bold=True, color=ACCENT)
     for k, cond in enumerate(ess['conds']):
-        text(c, LM + 22, yy, '①②③④⑤⑥'[k], 10)
+        text(c, LM + 22, yy, '①②③④⑤⑥⑦⑧⑨⑩'[k], 10)
         yy, _ = para(c, LM + 36, yy, cond, pw - 36, 10, 15.5)
         yy -= 1
     yy -= 4
@@ -2160,6 +2231,26 @@ def render_essay_problem(c, subj, dai, i, st, total):
             if not DRY:
                 FIGS[mat['name']](c, LM + 28, yy + 12, pw - 28, mat['h'], **mat.get('args', {}))
             yy -= mat['h'] - 6
+        elif mat['kind'] == 'figs':                      # 図を、上から順に、何枚か
+            yy += 12
+            for f_ in mat['items']:
+                if not DRY:
+                    FIGS[f_['name']](c, LM + 28, yy, pw - 28, f_['h'], **f_.get('args', {}))
+                yy -= f_['h'] + 4
+            yy += 10
+        elif mat['kind'] == 'memo':                      # メモ：題と中身を、枠にかこんで、ならべる
+            yy += 4
+            for ttl, lines in mat['boxes']:
+                bh_ = 15 + 13 * len(lines)
+                if not DRY:
+                    setline(c, .7, INK)
+                    c.setFillColor(colors.white)
+                    c.rect(LM + 30, yy - bh_, pw - 30, bh_, fill=1, stroke=1)
+                text(c, LM + 36, yy - 11, ttl, 9, bold=True, color=ACCENT)
+                for k_, ln_ in enumerate(lines):
+                    text(c, LM + 44, yy - 24 - 13 * k_, ln_, 9)
+                yy -= bh_ + 5
+            yy += 2
         else:
             yy, _ = para(c, LM + 30, yy, mat['text'], pw - 30, 9.5, 15)
         if mat.get('note'):
