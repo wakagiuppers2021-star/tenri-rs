@@ -51,7 +51,7 @@ python -X utf8 tools/check_tenri_rs.py
 
 1. `docs/過去問_読み取りメモ.md` で、各年度の理科の大問2の分野と問い方を読む。年度によって大問の数が違うので、対応させ方を決めて `ANALYSIS` に書く。
 2. `tools/tenri_rs_rika1.py` を手本に `tools/tenri_rs_rika2.py` を作る。
-   - `SETS`：10セットのリスト。各セットは `year`・`title`・`lead`・`qs`。必要なら `fig`（図）・`table`（表）・`items`（説明文の箇条）。
+   - `SETS`：10セットのリスト。各セットは `year`・`title`・`lead`・`qs`。必要なら `fig`（図）・`table`（表）・`items`（説明文の箇条）。図と表の両方があるときは、図を左・表を右にならべる。図が横に長いときは、セットに `stack=True` を書くと、図を上・表を下にならべる。
    - `qs` の各問は `kind`（`short`＝右の解答らん／`long`＝記述らん／`grid`＝複数の解答らん。`grid` は `labels` と `ans` の数をそろえる）・`q`・`ans`・`ex`、必要なら `unit`。
    - `ANALYSIS`：出題分析ページの中身。キーは `summary`・`years`・`points`・`usage`（大問1のファイルと同じ）。
 3. 新しい図が要るときは、`tools/build_tenri_rs.py` に `fig_<名前>` 関数を足し、`FIGS` に登録する。
