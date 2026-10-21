@@ -81,8 +81,9 @@ def register(B):
             setline(c, .9)
             c.setFillColor(colors.white)
             c.drawPath(_poly(c, pts), stroke=1, fill=1)
-            setline(c, .6, MUTED)
-            c.circle(cx, cy, r - d - 3.5, stroke=1, fill=0)
+            if r > 30:                                                           # 小さい歯車には、内がわの輪をかかない（文字が重なるため）
+                setline(c, .6, MUTED)
+                c.circle(cx, cy, r - d - 3.5, stroke=1, fill=0)
             text(c, cx, cy + 1, names[k], 11, bold=True, center=True)
             text(c, cx, cy - 11, f'{n}個', 8, center=True)
         if mark is not None:
