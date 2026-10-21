@@ -20,6 +20,7 @@ import tenri_rs_rika5 as R5
 import tenri_rs_rika6 as R6
 import tenri_rs_rika7 as R7
 import tenri_rs_rika8 as R8
+import tenri_rs_rika9 as R9
 import tenri_rs_shakai1 as S1
 import tenri_rs_shakai2 as S2
 import tenri_rs_shakai3 as S3
@@ -962,6 +963,108 @@ move810 = {'タンポポ': '風', 'オナモミ': '動物', 'ヤシ': '水', '�
 eq('理8-10(1) 種子の運ばれ方', ans(R8, 10, 1), [move810[k] for k in R8.SETS[9]['qs'][0]['labels']])
 root810 = {'アサガオ': '主根と側根', 'ススキ': 'ひげ根'}
 eq('理8-10(4) 根のつくり', ans(R8, 10, 4), [root810[k] for k in R8.SETS[9]['qs'][3]['labels']])
+
+# ---------------- 理科・大問9 ----------------
+# 1 電熱線：発熱 ∝ 電圧²÷抵抗（抵抗 ∝ 長さ÷太さ²）×時間
+rows = R9.SETS[0]['table']['rows']
+nm91 = rows[0][1:]
+dia91 = [float(x) for x in rows[1][1:]]
+len91 = [float(x) for x in rows[2][1:]]
+volt91 = [2 if '直列' in x else 1 for x in rows[3][1:]]
+rise91 = [float(x) for x in rows[4][1:]]
+heat91 = [v ** 2 / (l_ / d ** 2) for v, l_, d in zip(volt91, len91, dia91)]
+assert all(abs(rise91[k] - rise91[0] * heat91[k] / heat91[0]) < 1e-9 for k in range(5))
+def only91(f):
+    base = (dia91[0], len91[0], volt91[0])
+    idx = {'太さ': 0, '長さ': 1, '電池': 2}[f]
+    hit = [nm91[k] for k in range(1, 5) if all(((dia91[k], len91[k], volt91[k])[j] != base[j]) == (j == idx) for j in range(3))]
+    assert len(hit) == 1, (f, hit)
+    return hit[0]
+eq('理9-1(1) 条件を比べる', ans(R9, 1, 1), [only91(f) for f in ('太さ', '長さ', '電池')])
+eq('理9-1(3) 長さ2倍', ans(R9, 1, 3), f'{num(rise91[2] / rise91[0])}倍')
+eq('理9-1(4) 電池2個直列', ans(R9, 1, 4), f'{num(rise91[3] / rise91[0])}倍')
+eq('理9-1(5) 長さ5cm', ans(R9, 1, 5), f'{rise91[0] * len91[0] / 5:.1f}℃')
+eq('理9-1(6) 10分間', ans(R9, 1, 6), f'{rise91[0] * 10 / 5:.1f}℃')
+
+# 2 だ液：ヨウ素液の色が変わらない＝でんぷんがなくなった
+rows = R9.SETS[1]['table']['rows']
+tube92 = {r_: (rows[1][i], int(rows[2][i]), rows[3][i]) for i, r_ in enumerate(rows[0]) if i > 0}
+eq('理9-2(4) でんぷんが分解された', ans(R9, 2, 4), [k for k, v in tube92.items() if v[2] == '変化なし'][0])
+best92 = [v[1] for k, v in tube92.items() if v[0] == 'だ液' and v[2] == '変化なし'][0]
+assert best92 == 37 and '37' in ans(R9, 2, 6)
+organ92 = {'最初に消化が始まる': '口', 'たんじゅうをつくる': '肝臓', '養分を吸収する': '小腸', '水分を吸収する': '大腸', '胃液を出す': '胃'}
+fig92 = {'ア': '口', 'イ': '肝臓', 'ウ': '食道', 'エ': '胃', 'オ': '小腸', 'カ': '大腸'}                 # 図の説明文のとおり
+eq('理9-2(1) 消化器官', ans(R9, 2, 1), [[k for k, v in fig92.items() if v == organ92[lab]][0] for lab in R9.SETS[1]['qs'][0]['labels']])
+
+# 3 ばね：のびは重さに比例
+rows = R9.SETS[2]['table']['rows']
+w93 = [float(x) for x in rows[0][1:]]
+l93 = [float(x) for x in rows[1][1:]]
+k93 = (l93[1] - l93[0]) / (w93[1] - w93[0])
+assert all(abs(l_ - (l93[0] + k93 * w_)) < 1e-9 for l_, w_ in zip(l93, w93))
+eq('理9-3(3) 50g', ans(R9, 3, 3), f'{num(l93[0] + k93 * 50)}cm')
+eq('理9-3(4) 21cm', ans(R9, 3, 4), f'{num((21 - l93[0]) / k93)}g')
+eq('理9-3(5) 縦につなぐ', ans(R9, 3, 5), f'{num(2 * (l93[0] + k93 * 60))}cm')
+eq('理9-3(6) 横にならべる', ans(R9, 3, 6), f'{num(l93[0] + k93 * 60 / 2)}cm')
+eq('理9-3(7) 月面', ans(R9, 3, 7), f'{6}分の1')
+
+# 4 気体：性質から名前を決める
+prop94 = {'ものが燃えるのを助ける': '酸素', '石灰水を白くにごらせる': '二酸化炭素', '火を近づけると、音を立てて燃える': '水素'}
+rows = R9.SETS[3]['table']['rows'][1:]
+name94 = {r[0]: prop94[r[2]] for r in rows}
+eq('理9-4(1) 気体の名前', ans(R9, 4, 1), [name94[k] for k in 'ABC'])
+dens94 = {'酸素': 1.43, '二酸化炭素': 1.98, '水素': 0.09}                  # 0℃・1気圧のg/L。空気は1.29
+eq('理9-4(4) 空気より軽い', ans(R9, 4, 4), [k for k, n in name94.items() if dens94[n] < 1.29][0])
+
+# 5 目：光が通る順に、図の場所を前から後ろへ並べる
+tx95 = {'ア': -43, 'イ': -36, 'ウ': -22, 'エ': 32, 'オ': 52}                  # 図で、引き出し線がさす場所の横の位置
+order95 = ['角膜', '虹彩', '水晶体', '網膜', '視神経']
+eq('理9-5(1) 目の部分', ans(R9, 5, 1), [order95[sorted(tx95, key=tx95.get).index(k)] for k in 'アイウエオ'])
+
+# 6 光電池とコンデンサー：回した回数に比例して、光る時間がのびる
+rows = R9.SETS[5]['table']['rows']
+n96 = [float(x) for x in rows[0][1:]]
+led96 = [float(x) for x in rows[1][1:]]
+bulb96 = [float(x) for x in rows[2][1:]]
+assert all(abs(t / n - led96[0] / n96[0]) < 1e-9 for t, n in zip(led96, n96))
+eq('理9-6(3) 60回', ans(R9, 6, 3), f'{num(led96[0] / n96[0] * 60)}秒')
+eq('理9-6(4) 60秒', ans(R9, 6, 4), f'{num(60 / (led96[0] / n96[0]))}回')
+eq('理9-6(5) 豆電球とLED', ans(R9, 6, 5), f'{round(bulb96[0] / led96[0] ** 1 * 2)}分の1' if False else f'{round(led96[0] / bulb96[0])}分の1')
+
+# 7 食塩水のこさ
+eq('理9-7(2) 20%', ans(R9, 7, 2), f'{num(20 / (80 + 20) * 100)}%')
+eq('理9-7(3) 5%の300g', ans(R9, 7, 3), f'{num(300 * 0.05)}g')
+eq('理9-7(4) 水を加える', ans(R9, 7, 4), f'{num(200 * 0.1 / (200 + 200) * 100)}%')
+eq('理9-7(5) 水をじょう発', ans(R9, 7, 5), f'{num(200 * 0.1 / (200 - 100) * 100)}%')
+x97 = Fraction(2, 10) * 150 - Fraction(8, 100) * 150
+x97 = x97 / (1 - Fraction(2, 10))
+eq('理9-7(6) 食塩を加える', ans(R9, 7, 6), f'{float(x97):g}g')
+eq('理9-7(7) 混ぜる', ans(R9, 7, 7), f'{num((200 * 0.1 + 100 * 0.25) / 300 * 100)}%')
+eq('理9-7(8) とけ残り', ans(R9, 7, 8), f'{50 - 36}g')
+
+# 8 惑星：表の距離と公転周期
+rows = R9.SETS[7]['table']['rows']
+pl98 = rows[0][1:]
+d98 = [float(x) for x in rows[1][1:]]
+t98 = [float(x) for x in rows[2][1:]]
+assert d98 == sorted(d98) and t98 == sorted(t98)
+assert all(abs(t ** 2 - d ** 3) / d ** 3 < .05 for d, t in zip(d98, t98))        # 周期の2乗＝距離の3乗（ケプラーの第3法則）
+eq('理9-8(1) 太陽に近い4つ', ans(R9, 8, 1), '→'.join(pl98[:4]))
+eq('理9-8(4) 木星', ans(R9, 8, 4), f'約{round(t98[pl98.index("木星")] / t98[pl98.index("地球")])}周')
+eq('理9-8(5) 火星', ans(R9, 8, 5), f'{num(19 / t98[pl98.index("火星")])}周')
+
+# 9 エネルギーの変換
+rows = R9.SETS[8]['table']['rows'][1:]
+conv99 = {r[0]: re.search(r'(.+)を、(.+)に変える', r[2]).groups() for r in rows if re.search(r'(.+)を、(.+)に変える', r[2])}
+eq('理9-9(1) 電気を運動に', ans(R9, 9, 1), [k for k, (a_, b_) in conv99.items() if (a_, b_) == ('電気', '運動')][0])
+eq('理9-9(2) 電気を熱に', ans(R9, 9, 2), [k for k, (a_, b_) in conv99.items() if (a_, b_) == ('電気', '熱')][0])
+eq('理9-9(3) 電気をつくる', ans(R9, 9, 3), join(r[0] for r in rows if r[2].endswith('電気に変える')))
+eq('理9-9(6) 電力量', ans(R9, 9, 6), f'{40 * 5}Wh')
+eq('理9-9(7) 白熱電球とLED', ans(R9, 9, 7), f'{60 // 10}倍')
+
+# 10 浄水：作業の順
+key910 = {'取り入れる': 0, 'ちんでん池': 1, 'ろ過池': 2, '塩素': 3}
+eq('理9-10(1) 水道水の順', ans(R9, 10, 1), '→'.join(k for k, t in sorted(R9.SETS[9]['items'], key=lambda it: [v for kw, v in key910.items() if kw in it[1]][0])))
 
 # ---------------- 社会・大問1 ----------------
 capital = {'青森県': '青森市', '静岡県': '静岡市', '京都府': '京都市', '香川県': '高松市', '新潟県': '新潟市',

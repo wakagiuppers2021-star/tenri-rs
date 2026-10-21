@@ -90,6 +90,8 @@ def wrap(s, width, size=10, bold=False):
                     k = len(line)
                     while k > 0 and _word(line[k - 1]):
                         k -= 1
+                    while k > 1 and line[k - 1] in '（「『【〔':
+                        k -= 1                                   # 始めのかっこも、いっしょに次の行へ
                     if k > 0:
                         out.append(line[:k])
                         line = line[k:] + ch
@@ -1522,6 +1524,36 @@ def fig_moonphases(c, x, top, w, h, phases=(0, 1, 2, 3, 4, 5, 6, 7), labels='ア
         text(c, cx, cy - r - 14, labels[k], 11, bold=True, center=True)
 
 
+def fig_eye(c, x, top, w, h):
+    """目の断面。ア角膜・イ虹彩・ウ水晶体・エ網膜・オ視神経。"""
+    cx, cy = x + w / 2, top - h / 2 - 2
+    R = 44
+    setline(c, 1.2)
+    c.setFillColor(colors.white)
+    c.circle(cx, cy, R, stroke=1, fill=1)
+    setline(c, 3.2, INK)
+    c.arc(cx - R, cy - R, cx + R, cy + R, 150, 60)                       # 角膜
+    setline(c, 3.2, ACCENT)
+    c.arc(cx - R + 4, cy - R + 4, cx + R - 4, cy + R - 4, -55, 110)      # 網膜
+    setline(c, 1.2)
+    c.setFillColor(colors.HexColor('#E3EBF0'))
+    c.ellipse(cx - 27, cy - 14, cx - 17, cy + 14, stroke=1, fill=1)      # 水晶体
+    setline(c, 3, MUTED)
+    c.line(cx - 36, cy + 14, cx - 36, cy + 36)                           # 虹彩
+    c.line(cx - 36, cy - 14, cx - 36, cy - 36)
+    setline(c, 5, MUTED)
+    ax, ay = cx + R * math.cos(math.radians(-30)), cy + R * math.sin(math.radians(-30))
+    c.line(ax, ay, ax + 18, ay - 12)                                     # 視神経
+    arrow(c, cx - R - 34, cy + 4, cx - R - 6, cy + 4, 6, 1, MUTED)
+    text(c, cx - R - 40, cy + 12, '光', 9, color=MUTED, center=True)
+    for lab, (bx, by), (tx, ty) in (('ア', (cx - 76, cy - 18), (cx - 43, cy - 8)), ('イ', (cx - 58, cy + 56), (cx - 36, cy + 30)),
+                                   ('ウ', (cx - 4, cy + 60), (cx - 22, cy + 12)), ('エ', (cx + 62, cy + 40), (cx + 32, cy + 26)),
+                                   ('オ', (cx + 70, cy - 48), (cx + 52, cy - 32))):
+        setline(c, .6, MUTED)
+        c.line(bx, by, tx, ty)
+        _badge(c, bx, by, lab)
+
+
 FIGS = {'monochord': fig_monochord, 'circuits': fig_circuits, 'moon': fig_moon,
         'ice_graph': fig_ice_graph, 'pendulum': fig_pendulum,
         'strata': fig_strata, 'magnet': fig_magnet, 'lever': fig_lever, 'sanken': fig_sanken,
@@ -1530,7 +1562,7 @@ FIGS = {'monochord': fig_monochord, 'circuits': fig_circuits, 'moon': fig_moon,
         'circuitset': fig_circuitset, 'ammeter': fig_ammeter, 'circulation': fig_circulation, 'cans': fig_cans,
         'mirror': fig_mirror, 'digest': fig_digest, 'watercycle': fig_watercycle, 'pulleys': fig_pulleys, 'shadow': fig_shadow,
         'leverbar': fig_leverbar, 'balance': fig_balance, 'cylinder': fig_cylinder, 'rods': fig_rods,
-        'fuleaf': fig_fuleaf, 'river': fig_river, 'microscope': fig_microscope, 'lens': fig_lens, 'moonphases': fig_moonphases}
+        'fuleaf': fig_fuleaf, 'river': fig_river, 'microscope': fig_microscope, 'lens': fig_lens, 'moonphases': fig_moonphases, 'eye': fig_eye}
 
 
 # ---------- 表・本文ブロック ----------
