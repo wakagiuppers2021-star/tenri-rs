@@ -1,7 +1,8 @@
-"""天理中学校 理科・社会 大問別の類題プリントを作る。
+"""天理中学校 理科・社会・算数・国語 大問別の類題プリントを作る。
 
 使い方: python -X utf8 tools/build_tenri_rs.py rika 1
         python -X utf8 tools/build_tenri_rs.py shakai 1
+        python -X utf8 tools/build_tenri_rs.py kokugo 1
 データは tools/tenri_rs_<教科><大問番号>.py に置く（SETS と ANALYSIS）。
 """
 from __future__ import annotations
@@ -43,7 +44,7 @@ pdfmetrics.registerFont(TTFont('JP', find_font(ROOT / 'fonts/BIZUDGothic-Regular
 pdfmetrics.registerFont(TTFont('JPB', find_font(ROOT / 'fonts/BIZUDGothic-Bold.ttf',
                                                 Path('C:/Windows/Fonts/BIZ-UDGothicB.ttc')), subfontIndex=0))
 
-SUBJECTS = {'rika': '理科', 'shakai': '社会', 'sansu': '算数'}
+SUBJECTS = {'rika': '理科', 'shakai': '社会', 'sansu': '算数', 'kokugo': '国語'}
 DRY = False          # True のときは描かずに高さだけ測る
 LAYOUT = []          # (ファイル, ページ, x0, x1, y0, y1, 文字列)
 BOTTOM = 52          # 本文がこれより下に来たらはみ出し
@@ -1974,6 +1975,19 @@ def ans_box(c, x0, x1, y0, y1):
         c.rect(x0, y0, x1 - x0, y1 - y0, fill=0, stroke=1)
 
 
+def marks(s):
+    """{…} でかこんだ部分に下線を引く（国語）。(かっこをとった本文, [(はじめ, おわり)]) を返す。"""
+    out, spans, i = '', [], None
+    for ch in s:
+        if ch == '{':
+            i = len(out)
+        elif ch == '}':
+            spans.append((i, len(out)))
+        else:
+            out += ch
+    return out, spans
+
+
 def draw_question(c, y, n, q, qs):
     kind = q['kind']
     lead = qs * 1.55
@@ -1983,11 +1997,32 @@ def draw_question(c, y, n, q, qs):
         width = 318
     else:
         width = RM - tx
-    lines = wrap(q['q'], width, qs)
+    plain, spans = marks(q['q'])
+    lines = wrap(plain, width, qs)
+    pos = 0
     for i, ln in enumerate(lines):
         text(c, tx, y - i * lead, ln, qs)
+        at = plain.index(ln, pos)
+        for a, b in spans:                              # 下線
+            a2, b2 = max(a, at), min(b, at + len(ln))
+            if a2 < b2 and not DRY:
+                setline(c, .8)
+                c.line(tx + tw(ln[:a2 - at], qs), y - i * lead - 2.4, tx + tw(ln[:b2 - at], qs), y - i * lead - 2.4)
+        pos = at + len(ln)
     last = y - (len(lines) - 1) * lead
     if kind == 'short':
+        if q.get('boxes'):                              # 名前つきの解答らんを、右から順にならべる
+            x = RM
+            for lab, w_ in reversed(q['boxes']):
+                ans_box(c, x - w_, x, last - 8, last + 14)
+                text(c, x - w_ - 4 - tw(lab, 8.5), last - 1, lab, 8.5, color=MUTED)
+                x -= w_ + 12 + tw(lab, 8.5)
+            return last - lead - 8
+        if q.get('cells'):                              # 漢字・かなを1字ずつ書く、マス目
+            k_, cs = q['cells'], min(22, 150 / q['cells'])
+            for k in range(k_):
+                ans_box(c, RM - (k_ - k) * cs, RM - (k_ - k - 1) * cs, last - 8, last - 8 + cs)
+            return last - lead - 8
         ans_box(c, 404, RM, last - 7, last + qs + 3)
         if q.get('unit'):
             text(c, RM - tw(q['unit'], 9) - 4, last - 1, q['unit'], 9, color=MUTED)
@@ -2074,6 +2109,13 @@ def render_problem(c, subj, dai, i, st, total, qs):
                        tab.get('left_cols', ())) - 14
     y -= qs + 2
     for n, q in enumerate(st['qs'], 1):
+        if q.get('head'):                               # 小問のまとまりの見出し（国語）
+            y -= 2
+            if not DRY:
+                c.setFillColor(PALE)
+                c.rect(LM, y - 6, RM - LM, 19, fill=1, stroke=0)
+            text(c, LM + 6, y, q['head'], 9.5, bold=True, color=ACCENT)
+            y -= 24
         y = draw_question(c, y, n, q, qs)
         sp = q.get('space', st.get('space', 0))
         if sp:                                          # 算数：式・考え方を書く、計算らん
@@ -2217,7 +2259,7 @@ def check_text(pdf, mod, kind):
     for i, st in enumerate(mod.SETS):
         page = doc[i].get_text().replace('\n', '').replace(' ', '')
         for q in st['qs']:
-            key = (q['q'] if kind == 'q' else q['ex']).replace('\n', '').replace(' ', '')[:14]
+            key = (q['q'] if kind == 'q' else q['ex']).replace('\n', '').replace(' ', '').replace('{', '').replace('}', '')[:14]
             if key not in page:
                 missing.append((i + 1, key))
     return missing

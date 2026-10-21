@@ -1,4 +1,4 @@
-"""天理中 理科・社会 類題の答えを、データとは別の計算・事実表から確かめる。
+"""天理中 理科・社会・算数・国語 類題の答えを、データとは別の計算・事実表から確かめる。
 
 使い方: python -X utf8 tools/check_tenri_rs.py
 """
@@ -27,6 +27,7 @@ import tenri_rs_shakai3 as S3
 import tenri_rs_shakai4 as S4
 import tenri_rs_shakai5 as S5
 import tenri_rs_sansu4 as M4
+import tenri_rs_kokugo1 as K1
 import world_outline
 from build_tenri_rs import SANKEN_ARROWS, SHAPES
 
@@ -1885,6 +1886,88 @@ eq('算4-10(3) 円柱の4分の1', ans(M4, 10, 3), f'{round(quarter10 * hh10, 2)
 seg10 = quarter10 - shoelace([(0, 0), (r10, 0), (0, r10)])
 assert abs(grid_area(lambda x, y: x * x + y * y <= r10 * r10 and x + y >= r10, 0, r10, 0, r10, 800) * hh10 - seg10 * hh10) < .5
 eq('算4-10(4) 三角柱を切りとった立体', ans(M4, 10, 4), f'{round(seg10 * hh10, 2):g}cm³')
+
+# ---------------- 国語（漢字・語句の検査に使う道具） ----------------
+try:
+    import pykakasi
+except ImportError:
+    sys.exit('pykakasi がありません。pip install -r requirements.txt を実行してください')
+import kanji_grade as KG
+
+_kks = pykakasi.kakasi()
+KANA_FIX = {'築く': 'きずく', '潔く': 'いさぎよく'}                       # pykakasi の読みの誤り（JMdict で確認した正しい読み）
+is_kanji = lambda ch: '一' <= ch <= '龥'
+kata2h = lambda t_: ''.join(chr(ord(c_) - 0x60) if 'ァ' <= c_ <= 'ヶ' else c_ for c_ in t_)
+RAD_NAME = {                                                              # 康熙字典の部首番号 → 部首名（本によってちがう呼び名もふくむ）
+    9: {'にんべん'}, 18: {'りっとう'}, 19: {'ちから'}, 30: {'くち'}, 31: {'くにがまえ'}, 32: {'つちへん', 'つち'}, 38: {'おんなへん', 'おんな'},
+    40: {'うかんむり'}, 53: {'まだれ'}, 60: {'ぎょうにんべん'}, 61: {'りっしんべん', 'こころ', 'したごころ'}, 64: {'てへん', 'て'}, 66: {'ぼくにょう', 'のぶん'},
+    72: {'ひへん', 'にちへん', 'ひ'}, 75: {'きへん', 'き'}, 85: {'さんずい', 'みず'}, 86: {'れっか', 'れんが', 'ひ'}, 96: {'おうへん', 'たまへん'},
+    104: {'やまいだれ'}, 113: {'しめすへん'}, 115: {'のぎへん'}, 116: {'あなかんむり'}, 118: {'たけかんむり'}, 120: {'いとへん'},
+    140: {'くさかんむり'}, 145: {'ころもへん'}, 149: {'ごんべん'}, 154: {'かいへん'}, 157: {'あしへん'}, 159: {'くるまへん'}, 162: {'しんにょう', 'しんにゅう'},
+    163: {'おおざと'}, 167: {'かねへん'}, 169: {'もんがまえ'}, 170: {'こざとへん'}, 181: {'おおがい'}, 184: {'しょくへん'},
+}
+
+
+def reading(w_):
+    return KANA_FIX.get(w_) or ''.join(x_['hira'] for x_ in _kks.convert(w_))
+
+
+def check_kanji_set(mod):
+    """漢字の問題の答えを、読み（pykakasi）・学年配当（KANJIDIC2）・部首と画数（KANJIDIC2）から調べ直す。(問題数, 不一致の一覧) を返す。"""
+    bad, n_ = [], 0
+    for i_, st_ in enumerate(mod.SETS, 1):
+        seen = set()
+        for j_, q_ in enumerate(st_['qs'], 1):
+            n_ += 1
+            tag = f'{i_}-{j_}'
+            m_, a_ = q_.get('meta'), q_['ans']
+            if not m_:                                                    # 書き取り・読み・送りがなの答えは、セットの中で重ならない
+                if a_ in seen:
+                    bad.append((tag, '同じセットに、同じ答えがある'))
+                seen.add(a_)
+            if m_ and m_['t'] == 'P':
+                hit = [k_ for k_, o_ in zip('アイウエ', m_['opts']) if set(o_) & set(m_['word'])]
+                if hit != [a_]:
+                    bad.append((tag, '同じ漢字をふくむ熟語が、ちょうど1つではない', hit, a_))
+                if non_elem(''.join(m_['opts']) + m_['word']):
+                    bad.append((tag, '小学校で習わない漢字', non_elem(''.join(m_['opts']) + m_['word'])))
+                if q_['q'].count('{') != 1 or _t_(q_) != '' and not re.fullmatch(r'[ァ-ヶー]+', _t_(q_)):
+                    bad.append((tag, '下線部がカタカナでない'))
+            elif m_ and m_['t'] == 'B':
+                r_, ex_r = KG.INFO[m_['kanji']][0], KG.INFO[m_['example']][0]
+                if (r_ != ex_r or m_['name'] not in RAD_NAME.get(r_, set()) or a_ != f'{m_["name"]}　{m_["example"]}'
+                        or any(KG.INFO.get(c_, (None,))[0] != r_ for c_ in m_['all'])):         # 解説にあげた漢字も、同じ部首
+                    bad.append((tag, '部首', m_['kanji'], r_, ex_r, m_['name']))
+            elif m_ and m_['t'] == 'S':
+                if KG.INFO[m_['kanji']][1] != m_['n'] or a_ != f'{m_["n"]}画':
+                    bad.append((tag, '画数', m_['kanji'], KG.INFO[m_['kanji']][1], m_['n']))
+            else:
+                t_ = _t_(q_)
+                if re.fullmatch(r'[ァ-ヶー]+', t_):                      # 書き取り：答えの読みが、カタカナと同じ
+                    if reading(a_) != kata2h(t_) or non_elem(a_):
+                        bad.append((tag, '書き取り', t_, a_, reading(a_), non_elem(a_)))
+                elif re.fullmatch(r'[ぁ-ん]+', t_):                        # 送りがな：答えの読みが、ひらがなと同じ
+                    if reading(a_) != t_ or non_elem(a_):
+                        bad.append((tag, '送りがな', t_, a_, reading(a_), non_elem(a_)))
+                else:                                                     # 読み：漢字の読みが、答えと同じ
+                    if reading(t_) != a_ or non_elem(t_):
+                        bad.append((tag, '読み', t_, a_, reading(t_), non_elem(t_)))
+            if not q_['ex'] or q_['ex'].endswith(('と書く。', '読む。')):
+                bad.append((tag, '解説に一言がない'))
+    return n_, bad
+
+
+def _t_(q_):
+    mm_ = re.search(r'\{(.+?)\}', q_['q'])
+    return mm_.group(1) if mm_ else ''
+
+
+non_elem = lambda t_: [ch_ for ch_ in t_ if is_kanji(ch_) and not KG.elementary(ch_)]
+
+# ---------------- 国語・大問1（漢字） ----------------
+n1_, bad1_ = check_kanji_set(K1)
+eq(f'国1 漢字{n1_}問（読み・書き取り・送りがな・熟語の選択・部首・画数）の答え', bad1_, [])
+assert all(len(st_['qs']) == 15 for st_ in K1.SETS)
 
 # ---------------- 形式（tools/tenri_rs_*.py をすべて） ----------------
 for f in sorted(Path(__file__).resolve().parent.glob('tenri_rs_*.py')):

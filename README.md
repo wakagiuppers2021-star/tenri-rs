@@ -1,6 +1,6 @@
-# 天理中学校 理科・社会 大問別類題プリント
+# 天理中学校 理科・社会・算数・国語 大問別類題プリント
 
-天理中学校の入試（理科・社会）の大問ごとに、出題形式をまねた類題を10セットずつ作る。
+天理中学校の入試（理科・社会・算数・国語）の大問ごとに、出題形式をまねた類題を10セットずつ作る。
 「大問1を10セット → 大問2を10セット → …」の順に進める。大問1は理科・社会とも完成済み。
 
 ## フォルダ構成
@@ -8,12 +8,14 @@
 | パス | 中身 |
 |---|---|
 | `tools/build_tenri_rs.py` | PDFを作るスクリプト（レイアウト・図・検査） |
-| `tools/tenri_rs_<rika\|shakai\|sansu><番号>.py` | 大問ごとのデータ（`SETS` と `ANALYSIS`） |
+| `tools/tenri_rs_<rika\|shakai\|sansu\|kokugo><番号>.py` | 大問ごとのデータ（`SETS` と `ANALYSIS`） |
 | `tools/check_tenri_rs.py` | 答えをデータとは別の計算・事実表で検算する |
+| `tools/kanji_grade.py` | 漢字の学年配当（教育漢字1026字ほか）・部首番号・画数（KANJIDIC2、CC BY-SA 4.0）。国語の漢字の検算に使う |
 | `tools/world_outline.py` | 世界地図の海岸線・国境のデータ（Natural Earth 1:110m。パブリックドメイン）。`fig_world` が使う |
 | `tools/bundle_pdfs.py` | 大問ごとのPDFを、教科・種類（問題／解答解説／出題分析）ごとに1つにまとめる（しおり付き）。出力は `output/まとめ/` |
 | `docs/過去問_読み取りメモ.md` | 2014〜2024年度の理科・社会の全大問の読み取りメモと出題分析 |
 | `docs/過去問_読み取りメモ_算数.md` | 2014〜2024年度の算数の全大問の読み取りメモ（大問4の年度別一覧つき） |
+| `docs/過去問_読み取りメモ_国語.md` | 国語の過去問の読み取りメモ（途中。2014〜2024年度のうち読めた範囲） |
 | `fonts/` | BIZ UDゴシック（OFL版）とライセンス文 `OFL.txt` |
 | `output/天理中学校_<理科\|社会>大問<番号>対策/` | 生成したPDF（git管理する） |
 
@@ -32,10 +34,11 @@ pip install -r requirements.txt
 ```bash
 python -X utf8 tools/build_tenri_rs.py rika 1
 python -X utf8 tools/build_tenri_rs.py shakai 1
+python -X utf8 tools/build_tenri_rs.py kokugo 1
 python -X utf8 tools/check_tenri_rs.py
 ```
 
-- `build_tenri_rs.py <rika|shakai> <番号>` は、問題・解答解説・出題分析の3つのPDFを作り、続けてレイアウト（はみ出し・重なり）と本文の抽出もれを調べる。不具合があれば終了コード1。
+- `build_tenri_rs.py <rika|shakai|sansu|kokugo> <番号>` は、問題・解答解説・出題分析の3つのPDFを作り、続けてレイアウト（はみ出し・重なり）と本文の抽出もれを調べる。不具合があれば終了コード1。
 - `check_tenri_rs.py` は、計算問題や事実問題の答えを独立に計算し直して照合する。あわせて `tools/tenri_rs_*.py` のすべてについて、10セットあるか・解答と解説が欠けていないかを調べる。不一致があれば終了コード1。
 
 ## 形式
