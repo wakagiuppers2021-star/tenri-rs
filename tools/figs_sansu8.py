@@ -43,7 +43,7 @@ def register(B):
         c.line(x0 - 24, py - 6, x0 + 18, py - 6)
         c.line(x0 + 18, py - 6, x0 + 18, py - 12)
         arrow(c, x0 + 21, py - 6, x0 + 21, y0 + water + 10, 5, .9, INK)
-        text(c, x0 - 40 + 0, py - 3, 'A管', 9.5, bold=True)
+        text(c, x0 - 52, py - 3, 'A管', 9.5, bold=True)
         # B管：水そうの下の右はし、外へ出す
         bx = x0 + wd - 26
         setline(c, 1.5, INK)
@@ -111,7 +111,7 @@ def register(B):
             dy = tx[4] if len(tx) > 4 else 0
             text(c, X(t) + dx, Y(v) + dy - 3, s, 9.5, bold=True, center=True)
         if inset == 'tank':
-            _tank(c, x + 34, top - 118, 116, 68)
+            _tank(c, x + 62, top - 118, 116, 68)
 
     # ---------- 円形の遊歩道 ----------
     def _arc_arrow(c, cx, cy, r, a0, a1):
@@ -135,26 +135,23 @@ def register(B):
         pw = w / n
         for k, pn in enumerate(panels):
             px = x + pw * k
-            text(c, px + 4, top - 11, pn['cap'], 9.5, bold=True)
-            r = min(pw / 2 - 52, (h - 56) / 2)
-            cx, cy = px + pw / 2, top - 24 - 14 - r
+            r = min(pw / 2 - 50, (h - 52) / 2)
+            cx, cy = px + pw / 2, top - 30 - r
             setline(c, 2.2, INK)
             c.circle(cx, cy, r, stroke=1, fill=0)
-            # スタート地点（真上）
-            c.setFillColor(INK)
+            c.setFillColor(INK)                                 # スタート地点（真上）
             c.circle(cx, cy + r, 2.6, stroke=0, fill=1)
-            text(c, cx, cy + r + 8, 'スタート', 8.5, center=True)
-            # A：右まわり（内がわ）
-            _arc_arrow(c, cx, cy, r - 10, 86, 36)
-            text(c, cx + (r - 28) * math.cos(math.radians(58)), cy + (r - 28) * math.sin(math.radians(58)) - 3, 'A', 9.5, bold=True, center=True)
-            if pn['mode'] == 'opp':                           # B：左まわり（外がわ）
+            text(c, cx, cy + r + 17, 'スタート', 8.5, center=True)
+            _arc_arrow(c, cx, cy, r - 10, 86, 36)               # A：右まわり（内がわ）
+            text(c, cx + (r - 27) * math.cos(math.radians(62)), cy + (r - 27) * math.sin(math.radians(62)) - 3, 'A', 9.5, bold=True, center=True)
+            if pn['mode'] == 'opp':                             # B：左まわり（外がわ）
                 _arc_arrow(c, cx, cy, r + 10, 94, 144)
                 text(c, cx + (r + 22) * math.cos(math.radians(122)), cy + (r + 22) * math.sin(math.radians(122)) - 3, 'B', 9.5, bold=True, center=True)
-            else:                                             # B：右まわり（外がわ）
+            else:                                               # B：右まわり（外がわ）
                 _arc_arrow(c, cx, cy, r + 10, 86, 30)
                 text(c, cx + (r + 22) * math.cos(math.radians(52)), cy + (r + 22) * math.sin(math.radians(52)) - 3, 'B', 9.5, bold=True, center=True)
-            text(c, cx, cy + 2, pn['lap'], 9.5, center=True)
-            text(c, cx, cy - 12, '（1周）', 8, color=MUTED, center=True)
+            text(c, cx, cy - 3, pn['lap'], 9.5, center=True)
+            text(c, cx, cy - r - 17, pn['cap'], 9.5, bold=True, center=True)
 
     # ---------- 立体の見取図 ----------
     KX, KY = .42, .3
@@ -212,9 +209,11 @@ def register(B):
         for i in range(n - 1):                                 # 段の高さ（正面の段の縦の辺の、右がわ）
             zc = (hs[i] + hs[i + 1]) / 2
             sx, sy = P(X[i + 1], 0, zc)
-            text(c, sx + 4, sy - 3, f'{hs[i] - hs[i + 1]:g}cm', 9)
+            lab = f'{hs[i] - hs[i + 1]:g}cm'
+            text(c, sx - 4 - tw(lab, 9), sy - 3, lab, 9)
         ex, ey = P(W, 0, hs[-1] / 2)
-        text(c, ex + 4, ey - 3, f'{hs[-1]:g}cm', 9)
+        lab = f'{hs[-1]:g}cm'
+        text(c, ex - 4 - tw(lab, 9), ey - 3, lab, 9)
         bx, by = P(W, D / 2, 0)
         text(c, bx + 6, by - 10, f'{D:g}cm', 9)
 

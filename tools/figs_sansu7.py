@@ -19,7 +19,7 @@ def register(B):
     SHADE = colors.HexColor('#DCE2E6')
 
     # ---------- 円柱を4等分した立体（見取図） ----------
-    def quarter_solid(c, px, pw, top, ph, R, H, kx=.42, ky=.3):
+    def quarter_solid(c, px, pw, top, ph, R, H, kx=.5, ky=.4):
         """底面が、半径Rの四分円（おうぎ形）、高さHの立体。中心は、おくの左はし。弧が、手前の右がわ。"""
         sc = min((pw - 46) / (R * (1 + kx)), (ph - 30) / (H + ky * R))
         wd, ht = R * (1 + kx) * sc, (H + ky * R) * sc
@@ -127,7 +127,7 @@ def register(B):
         setline(c, 1.1)
         c.line(gx0, gy0, gx1 + 6, gy0)
         c.line(gx0, gy0, gx0, gy1 + 4)
-        text(c, gx1 + 8, gy0 - 11, hist['xlab'], 8, color=MUTED)
+        text(c, (gx0 + gx1) / 2, gy0 - 23, hist['xlab'], 8.5, color=MUTED, center=True)
 
     # ---------- 長方形ABCDと、動く2点 ----------
     def fig_rect(c, x, top, w, h, W=12, H=8):
@@ -194,6 +194,10 @@ def register(B):
         c.line(gx0, gy0, gx0, gy1 + 4)
         text(c, gx0 - 30, gy1 + 12, ylab, 8.5)
         text(c, gx1 + 9, gy0 - 3, xlab, 8.5)
+        for t, v in pts[1:]:                                                     # 目安の点線（折れ曲がり・終わり）
+            setline(c, .6, MUTED, (3, 2))
+            c.line(X(t), gy0, X(t), Y(v))
+            c.line(gx0, Y(v), X(t), Y(v))
         setline(c, 1.8, INK)
         for (t1, v1), (t2, v2) in zip(pts, pts[1:]):
             c.line(X(t1), Y(v1), X(t2), Y(v2))

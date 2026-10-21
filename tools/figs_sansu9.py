@@ -25,16 +25,16 @@ def register(B):
     # ---------- 折れ線グラフ ----------
     def fig_graph(c, x, top, w, h, series=(), xmax=60, ymax=24, xticks=(), yticks=(), xlab='時間（分）', ylab='',
                   guides=(), xgrid=None, ygrid=None, ylabels=None, legend=True, tank=False, left=64, right=18,
-                  dots=True, xlabels=None):
+                  xlabels=None, hlines=()):
         """series=[dict(pts=[(時間, 値), ...], dash=None|(4,2.5)|(1,2.5), label='凡例の文字')]。
         xticks・yticks の数だけ、目もりの数字を出す（ylabels={値: '文字'} で、数字を文字にかえられる）。
-        guides=[(時間, 値), ...] は、点から、軸までの点線。tank=True のときは、左に水そうの略図（A・B管、C管）をつける。"""
+        guides=[(時間, 値), ...] は、点から、軸までの点線。hlines=[(値, 時間), ...] は、左の軸から、その時間までの横の点線。tank=True のときは、左に水そうの略図（A・B管、C管）をつける。"""
         ylabels = ylabels or {}
         xlabels = xlabels or {}
         gx0 = x + left + (150 if tank else 0)
         gx1 = x + w - right
         has_leg = legend and any(s.get('label') for s in series)
-        gy1 = top - (30 if has_leg else 22)
+        gy1 = top - (40 if has_leg else 22)
         gy0 = top - h + 30
         X = lambda t: gx0 + (gx1 - gx0) * t / xmax
         Y = lambda v: gy0 + (gy1 - gy0) * v / ymax
@@ -53,6 +53,9 @@ def register(B):
         for (t, v) in guides:
             setline(c, .6, MUTED, (1.5, 2.2))
             c.line(X(t), gy0, X(t), Y(v))
+            c.line(gx0, Y(v), X(t), Y(v))
+        for (v, t) in hlines:
+            setline(c, .6, MUTED, (1.5, 2.2))
             c.line(gx0, Y(v), X(t), Y(v))
         c.setDash()
         setline(c, 1.1, INK)
@@ -80,19 +83,15 @@ def register(B):
             for (t1, v1), (t2, v2) in zip(pts, pts[1:]):
                 c.line(X(t1), Y(v1), X(t2), Y(v2))
             c.setDash()
-            if dots:
-                c.setFillColor(col)
-                for t, v in pts[1:-1] if s.get('inner_dots') else []:
-                    c.circle(X(t), Y(v), 2.0, stroke=0, fill=1)
         if has_leg:
             lx = gx0 + 4
             for k, s in enumerate(series):
                 if not s.get('label'):
                     continue
                 setline(c, s.get('w', 1.7), s.get('color', INK), s.get('dash'))
-                c.line(lx, gy1 + 19, lx + 26, gy1 + 19)
+                c.line(lx, top - 7, lx + 26, top - 7)
                 c.setDash()
-                text(c, lx + 31, gy1 + 16, s['label'], 9, bold=True)
+                text(c, lx + 31, top - 10, s['label'], 9, bold=True)
                 lx += 31 + tw(s['label'], 9, True) + 22
         if tank:
             _tank(c, x + 6, gy0, gy1)
@@ -138,27 +137,14 @@ def register(B):
     def _solid_cubehole(c, px, pw, top, h, a):
         """立方体から、上の面から下の面までまっすぐに、円柱をくりぬいた立体。a: side（立方体の1辺）, d（円柱の直径）"""
         s, d = a['side'], a['d']
-        kx, ky = .42, .3
-        sc = min((pw - 40) / (s + kx * s), (h - 52) / (s + ky * s))
-        ox = px + 20 + (pw - 40 - (s + kx * s) * sc) / 2
-        oy = top - 22 - (s + ky * s) * sc
+        kx, ky = .5, .36
+        sc = min((pw - 46) / (s + kx * s), (h - 62) / (s + ky * s))
+        ox = px + 22 + (pw - 46 - (s + kx * s) * sc) / 2
+        oy = top - 38 - (s + ky * s) * sc
         P = _obl(ox, oy, sc, kx, ky)
-        # 見えない辺（点線）
-        setline(c, .7, MUTED, (3, 2))
-        for p1, p2 in (((0, 0, 0), (0, s, 0)), ((0, s, 0), (s, s, 0)), ((0, s, 0), (0, s, s))):
-            c.line(*P(*p1), *P(*p2))
-        # 穴の下の円（見えないので点線）と、横の線
         cx, cy, r = s / 2, s / 2, d / 2
-        bot = _ell(P, cx, cy, r, 0)
-        c.setDash(3, 2)
-        c.drawPath(_path(c, bot), stroke=1, fill=0)
-        xs = [q[0] for q in bot]
-        lo, hi = min(bot, key=lambda q: q[0]), max(bot, key=lambda q: q[0])
         topl = _ell(P, cx, cy, r, s)
-        tl, tr = min(topl, key=lambda q: q[0]), max(topl, key=lambda q: q[0])
-        c.line(*tl, *lo)
-        c.line(*tr, *hi)
-        c.setDash()
+        bot = _ell(P, cx, cy, r, 0)
         # 見える面
         faces = [
             ([(0, 0, 0), (s, 0, 0), (s, 0, s), (0, 0, s)], colors.white),
@@ -172,11 +158,22 @@ def register(B):
         c.setFillColor(PALE)                                   # 穴
         setline(c, 1.1, INK)
         c.drawPath(_path(c, topl), stroke=1, fill=1)
-        # 直径
-        setline(c, .7, INK, (2.5, 2))
-        c.line(*P(cx - r, cy, s), *P(cx + r, cy, s))
+        # 見えない部分（点線）：うしろの辺、穴の下の円、穴の横の線
+        setline(c, .7, MUTED, (3, 2))
+        for p1, p2 in (((0, 0, 0), (0, s, 0)), ((0, s, 0), (s, s, 0)), ((0, s, 0), (0, s, s))):
+            c.line(*P(*p1), *P(*p2))
+        c.drawPath(_path(c, bot), stroke=1, fill=0)
+        lo, hi = min(bot, key=lambda q: q[0]), max(bot, key=lambda q: q[0])
+        tl, tr = min(topl, key=lambda q: q[0]), max(topl, key=lambda q: q[0])
+        c.line(*tl, *lo)
+        c.line(*tr, *hi)
         c.setDash()
-        text(c, P(cx, cy, s)[0], P(cx, cy, s)[1] + 3, f'{fmt(d)}cm', 8.5, center=True)
+        # 直径（引き出し線と文字）
+        tx, ty = P(cx, s, s)
+        text(c, tx, ty + 10, f'直径{fmt(d)}cm', 8.5, center=True)
+        setline(c, .6, INK)
+        topy = max(q[1] for q in topl)
+        c.line(tx, ty + 8, P(cx, cy, s)[0], topy)
         # 長さ
         text(c, P(s / 2, 0, 0)[0], P(0, 0, 0)[1] - 12, f'{fmt(s)}cm', 9, center=True)
         text(c, P(s, s / 2, 0)[0] + 5, P(s, s / 2, 0)[1] - 8, f'{fmt(s)}cm', 9)
@@ -220,13 +217,20 @@ def register(B):
         for k, (wd, hh) in enumerate(steps):
             mx = (xs[k] + xs[k + 1]) / 2
             text(c, P(mx, 0, 0)[0], P(0, 0, 0)[1] - 12, f'{fmt(wd)}cm', 9, center=True)
-        text(c, P(0, 0, H / 2)[0] - 16, P(0, 0, H / 2)[1] - 3, f'{fmt(H)}cm', 9, center=True)
+
+        def dimv(xx, z0, z1, lab, off, lx):
+            """たての長さ：辺から off（pt）はなれた所に、両はしに小さな横線のある線を引き、lx（pt）はなれた所に文字を書く。"""
+            (x_, y0), (_, y1) = P(xx, 0, z0), P(xx, 0, z1)
+            setline(c, .6, INK)
+            c.line(x_ + off, y0, x_ + off, y1)
+            c.line(x_ + off - 2.5, y0, x_ + off + 2.5, y0)
+            c.line(x_ + off - 2.5, y1, x_ + off + 2.5, y1)
+            text(c, x_ + off + lx, (y0 + y1) / 2 - 3, lab, 9, center=True)
+
+        dimv(0, 0, H, f'{fmt(H)}cm', -7, -14)
         for k in range(len(steps) - 1):                         # 段差の高さ
-            drop = steps[k][1] - steps[k + 1][1]
-            zx, zz = xs[k + 1], steps[k + 1][1] + drop / 2
-            text(c, P(zx, 0, zz)[0] - 14, P(zx, 0, zz)[1] - 3, f'{fmt(drop)}cm', 9, center=True)
-        hl = steps[-1][1]
-        text(c, P(W, 0, hl / 2)[0] - 14, P(W, 0, hl / 2)[1] - 3, f'{fmt(hl)}cm', 9, center=True)
+            dimv(xs[k + 1], steps[k + 1][1], steps[k][1], f'{fmt(steps[k][1] - steps[k + 1][1])}cm', -7, -14)
+        dimv(W, 0, steps[-1][1], f'{fmt(steps[-1][1])}cm', -7, -14)
         text(c, P(W, dep / 2, 0)[0] + 5, P(W, dep / 2, 0)[1] - 8, f'{fmt(dep)}cm', 9)
 
     SOLIDS = {'cubehole': _solid_cubehole, 'steps': _solid_steps}
@@ -258,27 +262,28 @@ def register(B):
                 c.rect(x0 + lab_w + k * cw, yb, cw, rh, stroke=1, fill=1)
                 text(c, x0 + lab_w + k * cw + cw / 2, yb + 5.5, str(v), 9.5, center=True)
             y = yb
+        c.setFillColor(INK)
         for k in range(3):
-            text(c, x0 + lab_w + cw / 2, y - 8 - k * 5.5, '・', 9, center=True)
+            c.circle(x0 + lab_w + cw / 2, y - 7 - k * 6, 1.1, stroke=0, fill=1)
 
     # ---------- 白石と黒石 ----------
     def fig_stones(c, x, top, w, h, pattern='○●○○●●○○●', reps=3, per_row=None):
-        """pattern（○＝白、●＝黒）を reps 回くり返して、石をならべ、さいごに「……」をつける。"""
+        """pattern（○＝白、●＝黒）を reps 回くり返して、石をならべ、さいごに「……」をつける。per_row 個ずつで、行をかえる。"""
         seq = pattern * reps
         n = len(seq)
         per = per_row or n
         rows = math.ceil(n / per)
-        step = min(19.0, (w - 50) / per)
-        r = step * .39
-        x0 = x + (w - (per * step + 26)) / 2
+        step = min(26.0, (w - 70) / per)
+        r = step * .34
+        x0 = x + (w - per * step) / 2 - 14
         for i, ch in enumerate(seq):
             rr, cc = divmod(i, per)
-            cx, cy = x0 + step * (cc + .5), top - 22 - rr * (step + 8)
-            setline(c, 1.1, INK)
+            cx, cy = x0 + step * (cc + .5), top - 24 - rr * (step + 8)
+            setline(c, 1.2, INK)
             c.setFillColor(INK if ch == '●' else colors.white)
             c.circle(cx, cy, r, stroke=1, fill=1)
         lastr = rows - 1
-        text(c, x0 + step * ((n - 1) % per + 1) + 3, top - 22 - lastr * (step + 8) - 3, '……', 11, bold=True)
+        text(c, x0 + step * ((n - 1) % per + 1) + 3, top - 24 - lastr * (step + 8) - 3, '……', 11, bold=True)
 
     # ---------- 格子状の道 ----------
     def fig_roads(c, x, top, w, h, nx=5, ny=3, labels=(), blocked=(), cap=''):

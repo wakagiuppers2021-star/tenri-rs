@@ -12,7 +12,7 @@ s5_plane  : 平面の図を、パネル（(1)(2)…）にならべる。座標�
               ('seg',    p, q, opts)                   線分。opts: w, dash
               ('arc',    (cx, cy), r, a0, a1, opts)    円弧（線だけ）
               ('dim',    p, q, 'ラベル', opts)         寸法の線とラベル。opts: side=1|-1（p→q の左がわが1）, off=線のはなれ(pt), size
-              ('lbl',    (x, y), 'ラベル', opts)       文字。opts: dx, dy(pt), size, anchor='c'|'l'|'r', bold
+              ('lbl',    (x, y), 'ラベル', opts)       文字。opts: dx, dy(pt), size, anchor='c'|'l'|'r', bold, bg=True（白い下地）
               ('pt',     (x, y), 'A', opts)            点の名前（太字）。opts: dx, dy(pt), dot=True
               ('dot',    (x, y), opts)                 小さな点
               ('rt',     (vx, vy), (dx1, dy1), (dx2, dy2))   直角の印
@@ -39,6 +39,19 @@ def register(B):
     FILLS = {'white': colors.white, 'gray': colors.HexColor('#C2C9CE'), 'black': INK}
 
     # ---------- 平面の図 ----------
+    def hatch(c, clip, box, gap=5.6):
+        """clip の内がわに、右上がりの斜線を引く。線の位置はページ全体でそろえる（形をならべても、斜線がつながる）。"""
+        x0, y0, x1, y1 = box
+        c.saveState()
+        c.clipPath(clip, stroke=0, fill=0)
+        setline(c, .45, MUTED)
+        m = math.floor((x0 - y1) / gap)
+        while m * gap <= x1 - y0:
+            k = m * gap
+            c.line(x0, x0 - k, x1, x1 - k)
+            m += 1
+        c.restoreState()
+
     def arc_points(cx, cy, r, a0, a1):
         lo, hi = min(a0, a1), max(a0, a1)
         angs = [lo, hi] + [t for t in range(-720, 721, 90) if lo < t < hi]
@@ -167,7 +180,7 @@ def register(B):
                     path = path_of(pr)
                     fill = o.get('fill')
                     if fill == 'hatch':
-                        _hatch(c, path, *box_of(pr), gap=o.get('gap', 4.2))
+                        hatch(c, path, box_of(pr), o.get('gap', 5.6))
                     elif fill in FILLS:
                         c.setFillColor(FILLS[fill])
                         c.drawPath(path, stroke=0, fill=1)
@@ -178,7 +191,7 @@ def register(B):
                     a, b = pr[1]
                     c.saveState()
                     c.clipPath(path_of(a), stroke=0, fill=0)
-                    _hatch(c, path_of(b), *box_of(b), gap=o.get('gap', 4.2))
+                    hatch(c, path_of(b), box_of(b), o.get('gap', 5.6))
                     c.restoreState()
                     if o.get('outline'):
                         setline(c, o.get('w', .8), col)
@@ -213,6 +226,9 @@ def register(B):
                     ww = tw(pr[2], size, o.get('bold', False))
                     an = o.get('anchor', 'c')
                     xx = tx + o.get('dx', 0) - (ww / 2 if an == 'c' else ww if an == 'r' else 0)
+                    if o.get('bg'):
+                        c.setFillColor(colors.white)
+                        c.rect(xx - 1.5, ty + o.get('dy', 0) - size * .55, ww + 3, size * 1.1, stroke=0, fill=1)
                     text(c, xx, ty + o.get('dy', 0) - size * .3, pr[2], size, o.get('bold', False))
                 elif k == 'pt':
                     tx, ty = T(pr[1])

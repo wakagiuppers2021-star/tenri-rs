@@ -22,10 +22,13 @@ def register(B):
     WHITE = colors.white
     KX, KY = .42, .3                                          # おくゆき1あたりの、右・上へのずれ
 
-    def lab(c, x, y, s, size=9, anchor='c', bold=False):
-        """(x, y) を、文字のまん中の高さにして書く。anchor: 'c'＝中央、'l'＝左はしが x、'r'＝右はしが x。"""
+    def lab(c, x, y, s, size=9, anchor='c', bold=False, halo=None):
+        """(x, y) を、文字のまん中の高さにして書く。anchor: 'c'＝中央、'l'＝左はしが x、'r'＝右はしが x。halo＝文字の下にしく色（線を消す）。"""
         w = tw(s, size, bold)
         xx = x - (w / 2 if anchor == 'c' else w if anchor == 'r' else 0)
+        if halo is not None:
+            c.setFillColor(halo)
+            c.rect(xx - 1.2, y - size * .52, w + 2.4, size * 1.04, stroke=0, fill=1)
         text(c, xx, y - size * .33, s, size, bold)
 
     def setl(c, w, color=INK, dash=None):
@@ -235,12 +238,12 @@ def register(B):
         seg(c, P(off, 0, hh), P(off, 0, 0), .8, (3, 2))          # 高さ
         rt_mark(c, P(off, 0, 0), (1, 0), (0, 1))
         lab(c, P(b1 / 2, 0, 0)[0], P(0, 0, 0)[1] - 11, f'{b1:g}cm')
-        lab(c, P((off + b1 - off) / 2, 0, hh)[0], P(0, 0, hh)[1] + 9, f'{b2:g}cm')
-        lab(c, P(off, 0, hh / 2)[0] + 3, P(off, 0, hh / 2)[1], f'{hh:g}cm', anchor='l')
+        lab(c, P(b1 / 2, d / 2, hh)[0], P(b1 / 2, d / 2, hh)[1], f'{b2:g}cm', 8.5)                      # 上底（上の面のまん中）
+        lab(c, P(off, 0, hh / 2)[0] + 3, P(off, 0, hh / 2)[1], f'{hh:g}cm', 8.5, 'l', halo=WHITE)
         lab(c, P(b1, d / 2, 0)[0] + 5, P(b1, d / 2, 0)[1] - 8, f'{d:g}cm', anchor='l')
 
     def sh_revolve(c, px, pw, rtop, rh, a):
-        """直線ABのまわりに回す平面図形。poly＝(横, 高さ) の点の列（軸は 横＝0）。"""
+        """直線ABのまわりに回す平面図形。poly＝(軸からの横, 高さ) の点の列（軸は 横＝0）。labels＝長さの書きこみ。"""
         poly = a['poly']
         wmax = max(p[0] for p in poly)
         hmax = max(p[1] for p in poly)
@@ -254,21 +257,22 @@ def register(B):
         lab(c, P(0, -1.1)[0] - 9, P(0, -1.1)[1] + 2, 'B', 10, bold=True)
         for lbl in a['labels']:
             kind = lbl[0]
-            if kind == 'b':                                     # 下に
+            if kind == 'b':                                     # 下に（横 u の位置）
                 lab(c, P(lbl[1], 0)[0], P(lbl[1], 0)[1] - 11, lbl[2])
-            elif kind == 'r':                                   # 右に（高さの区間 v0〜v1）
+            elif kind == 'r':                                   # 右に（横 u、高さの区間 v0〜v1）
                 lab(c, P(lbl[1], (lbl[2] + lbl[3]) / 2)[0] + 4, P(lbl[1], (lbl[2] + lbl[3]) / 2)[1], lbl[4], anchor='l')
             elif kind == 't':                                   # 上に（横の区間 u0〜u1、高さ v）
                 lab(c, P((lbl[1] + lbl[2]) / 2, lbl[3])[0], P(lbl[1], lbl[3])[1] + 8, lbl[4])
-            elif kind == 'gap':                                 # 軸から図までのすきま（高さ v）
+            elif kind == 'gap':                                 # 軸から図までのすきま（横の区間 u0〜u1、高さ v）
                 dim_arrow(c, P(lbl[1], lbl[3]), P(lbl[2], lbl[3]), lbl[4], dy=8)
 
     def sh_pitbox(c, px, pw, rtop, rh, a):
-        """直方体の上に、四角柱の穴（深さ pd）をあけた立体。奥行きの長さの文字は dlab（x など）。"""
+        """直方体の上の面に、四角柱の穴（深さ pit の最後）をあけた立体。奥行きの長さの文字は dlab（x など）。"""
         L, D, H = a['L'], a['D'], a['H']
         x0, x1, y0, y1, pd = a['pit']
-        sc, ox, oy = fit(px, pw, rtop, rh, L + KX * D, H + KY * D, ml=26, mr=40, mt=6, mb=22)
-        P = _obl(ox, oy, sc, KX, KY)
+        ky = a.get('ky', .45)
+        sc, ox, oy = fit(px, pw, rtop, rh, L + KX * D, H + ky * D, ml=26, mr=40, mt=6, mb=22)
+        P = _obl(ox, oy, sc, KX, ky)
         zf = H - pd
         fill_poly(c, [P(x0, y0, zf), P(x1, y0, zf), P(x1, y1, zf), P(x0, y1, zf)], WHITE)               # 穴の底
         fill_poly(c, [P(x0, y0, zf), P(x0, y1, zf), P(x0, y1, H), P(x0, y0, H)], SHADE)               # 穴の左のかべ
@@ -276,24 +280,19 @@ def register(B):
         c.setFillColor(PALE)                                                                           # 上の面（穴あき）
         setline(c, 1.1)
         pa = c.beginPath()
-        pts = [P(0, 0, H), P(L, 0, H), P(L, D, H), P(0, D, H)]
-        pa.moveTo(*pts[0])
-        for q in pts[1:]:
-            pa.lineTo(*q)
-        pa.close()
-        hole = [P(x0, y0, H), P(x1, y0, H), P(x1, y1, H), P(x0, y1, H)]
-        pa.moveTo(*hole[0])
-        for q in hole[1:]:
-            pa.lineTo(*q)
-        pa.close()
+        for ring in ([P(0, 0, H), P(L, 0, H), P(L, D, H), P(0, D, H)], [P(x0, y0, H), P(x1, y0, H), P(x1, y1, H), P(x0, y1, H)]):
+            pa.moveTo(*ring[0])
+            for q in ring[1:]:
+                pa.lineTo(*q)
+            pa.close()
         c.drawPath(pa, stroke=1, fill=1, fillMode=FILL_EVEN_ODD)
         fill_poly(c, [P(0, 0, 0), P(L, 0, 0), P(L, 0, H), P(0, 0, H)], WHITE)
         fill_poly(c, [P(L, 0, 0), P(L, D, 0), P(L, D, H), P(L, 0, H)], SHADE)
         lab(c, P(L / 2, 0, 0)[0], P(0, 0, 0)[1] - 11, f'{L:g}cm')
         lab(c, P(L, D / 2, 0)[0] + 5, P(L, D / 2, 0)[1] - 8, a['dlab'], anchor='l')
         lab(c, P(0, 0, H / 2)[0] - 4, P(0, 0, H / 2)[1], f'{H:g}cm', anchor='r')
-        lab(c, P((x0 + x1) / 2, y0, H)[0], P(0, 0, H)[1] - 9, f'{x1 - x0:g}cm', 8)                    # 穴の横の長さ
-        lab(c, P(x0, y0, H - pd / 2)[0] - 4, P(x0, y0, H - pd / 2)[1] - 1, f'{pd:g}cm', 8, 'r')     # 穴の深さ
+        lab(c, P(x0, y1, H)[0] - 5, P(x0, y1, H)[1] + 6, f'穴は{x1 - x0:g}cm×{y1 - y0:g}cm', 8, 'r')
+        lab(c, P(x0, y0, zf + pd / 2)[0] - 4, P(x0, y0, zf + pd / 2)[1], f'深さ{pd:g}cm', 8, 'r', halo=WHITE)
 
     def sh_triprism(c, px, pw, rtop, rh, a):
         """前の面が直角三角形（横 b・たて hh、直角は左下）の三角柱。おくゆき d。"""
@@ -308,33 +307,35 @@ def register(B):
         lab(c, P(b / 2, 0, 0)[0], P(0, 0, 0)[1] - 11, f'{b:g}cm')
         lab(c, P(0, 0, hh / 2)[0] - 4, P(0, 0, hh / 2)[1], f'{hh:g}cm', anchor='r')
         if a.get('slant'):
-            lab(c, P(b / 2, 0, hh / 2)[0] + 4, P(b / 2, 0, hh / 2)[1] + 6, a['slant'], anchor='l')
+            lab(c, P(b / 2, 0, hh / 2)[0] + 4, P(b / 2, 0, hh / 2)[1] + 6, a['slant'], anchor='l', halo=SHADE)
         lab(c, P(b, d / 2, 0)[0] + 5, P(b, d / 2, 0)[1] - 8, f'{d:g}cm', anchor='l')
 
     def sh_fnotch(c, px, pw, rtop, rh, a):
-        """直方体の、前の面の下のまん中から、直方体（はば nw・高さ nh・奥行き nd）をくりぬいた立体。"""
+        """直方体の、上の面の前のまん中を、直方体（はば・高さ nh・奥行き nd）の形に切りとった立体。"""
         L, D, H = a['L'], a['D'], a['H']
         nx0, nx1, nh, nd = a['notch']
-        sc, ox, oy = fit(px, pw, rtop, rh, L + KX * D, H + KY * D, ml=26, mr=40, mt=6, mb=22)
-        P = _obl(ox, oy, sc, KX, KY)
-        fill_poly(c, [P(nx0, 0, 0), P(nx0, nd, 0), P(nx0, nd, nh), P(nx0, 0, nh)], SHADE)            # 穴の左のかべ
-        fill_poly(c, [P(nx0, nd, 0), P(nx1, nd, 0), P(nx1, nd, nh), P(nx0, nd, nh)], PALE)            # 穴の奥のかべ
-        fill_poly(c, [P(0, 0, H), P(L, 0, H), P(L, D, H), P(0, D, H)], PALE)
+        ky = a.get('ky', .4)
+        sc, ox, oy = fit(px, pw, rtop, rh, L + KX * D, H + ky * D, ml=26, mr=40, mt=6, mb=22)
+        P = _obl(ox, oy, sc, KX, ky)
+        zf = H - nh
+        fill_poly(c, [P(0, 0, H), P(nx0, 0, H), P(nx0, nd, H), P(nx1, nd, H), P(nx1, 0, H), P(L, 0, H), P(L, D, H), P(0, D, H)], PALE)
         fill_poly(c, [P(L, 0, 0), P(L, D, 0), P(L, D, H), P(L, 0, H)], SHADE)
-        fr = [P(0, 0, 0), P(nx0, 0, 0), P(nx0, 0, nh), P(nx1, 0, nh), P(nx1, 0, 0), P(L, 0, 0), P(L, 0, H), P(0, 0, H)]
-        fill_poly(c, fr, WHITE)
+        fill_poly(c, [P(nx0, 0, zf), P(nx1, 0, zf), P(nx1, nd, zf), P(nx0, nd, zf)], WHITE)             # 切りとった所の底
+        fill_poly(c, [P(nx0, nd, zf), P(nx1, nd, zf), P(nx1, nd, H), P(nx0, nd, H)], PALE)              # 奥のかべ
+        fill_poly(c, [P(nx0, 0, zf), P(nx0, nd, zf), P(nx0, nd, H), P(nx0, 0, H)], SHADE)               # 左のかべ
+        fill_poly(c, [P(0, 0, 0), P(L, 0, 0), P(L, 0, H), P(nx1, 0, H), P(nx1, 0, zf), P(nx0, 0, zf), P(nx0, 0, H), P(0, 0, H)], WHITE)
         lab(c, P(L / 2, 0, 0)[0], P(0, 0, 0)[1] - 11, f'{L:g}cm')
         lab(c, P(L, D / 2, 0)[0] + 5, P(L, D / 2, 0)[1] - 8, f'{D:g}cm', anchor='l')
         lab(c, P(0, 0, H / 2)[0] - 4, P(0, 0, H / 2)[1], f'{H:g}cm', anchor='r')
-        lab(c, P((nx0 + nx1) / 2, 0, 0)[0], P(0, 0, 0)[1] + 7, f'{nx1 - nx0:g}cm', 8)                 # 穴のはば（穴の中）
-        lab(c, P(nx1, 0, nh / 2)[0] + 3, P(nx1, 0, nh / 2)[1], f'{nh:g}cm', 8, 'l')
-        lab(c, P(nx0, nd / 2, 0)[0] - 1, P(nx0, nd / 2, 0)[1] - 8, f'{nd:g}cm', 8, 'r')
+        lab(c, P((nx0 + nx1) / 2, 0, zf)[0], P(0, 0, zf)[1] + 5, f'{nx1 - nx0:g}cm', 8)                  # 切りとった所のはば
+        lab(c, P(nx1, 0, zf + nh / 2)[0] + 3, P(nx1, 0, zf + nh / 2)[1], f'{nh:g}cm', 8, 'l')           # 切りとった所の高さ
+        lab(c, P(nx0, nd / 2, H)[0] - 6, P(nx0, nd / 2, H)[1] + 1, f'{nd:g}cm', 8, 'r')                  # 切りとった所の奥行き
 
     def sh_cylhole(c, px, pw, rtop, rh, a):
         """円柱（半径 r・高さ hh）の、まん中を、底面が正方形（1辺 s）の四角柱でくりぬいた立体。"""
         r, hh, s_ = a['r'], a['hh'], a['s']
         e = .3
-        sc, ox, oy = fit(px, pw, rtop, rh, 2 * r, hh + 2 * e * r, ml=36, mr=44, mt=4, mb=22)
+        sc, ox, oy = fit(px, pw, rtop, rh, 2 * r, hh + 2 * e * r, ml=40, mr=40, mt=4, mb=22)
         cx, y0 = ox + r * sc, oy + e * r * sc
 
         def Pt(X, Y, Z):
@@ -347,25 +348,24 @@ def register(B):
         for t in th[60:]:
             p.lineTo(*Pt(r * math.cos(t), r * math.sin(t), 0))
         p.lineTo(*Pt(r, 0, hh))
-        for t in reversed(th):
+        for t in th[:61]:
             p.lineTo(*Pt(r * math.cos(t), r * math.sin(t), hh))
         p.close()
         c.drawPath(p, stroke=1, fill=1)
-        top_el = [Pt(r * math.cos(t), r * math.sin(t), hh) for t in th[:-1]]
-        fill_poly(c, top_el, PALE)
+        fill_poly(c, [Pt(r * math.cos(t), r * math.sin(t), hh) for t in th[:-1]], PALE)
         q = s_ / 2
-        hole_top = [Pt(-q, -q, hh), Pt(q, -q, hh), Pt(q, q, hh), Pt(-q, q, hh)]
-        fill_poly(c, [Pt(-q, q, hh), Pt(q, q, hh), Pt(q, q, hh - 1.1), Pt(-q, q, hh - 1.1)], SHADE, .8)   # 穴の奥のかべのいちぶ
-        fill_poly(c, hole_top, WHITE, 1.1)
+        bot = [Pt(-q, -q, 0), Pt(q, -q, 0), Pt(q, q, 0), Pt(-q, q, 0)]
         for (X, Y) in ((-q, -q), (q, -q), (q, q), (-q, q)):                       # 穴の、見えない辺（点線）
             seg(c, Pt(X, Y, hh), Pt(X, Y, 0), .7, (2.5, 2))
-        bot = [Pt(-q, -q, 0), Pt(q, -q, 0), Pt(q, q, 0), Pt(-q, q, 0)]
         for k in range(4):
             seg(c, bot[k], bot[(k + 1) % 4], .7, (2.5, 2))
+        fill_poly(c, [Pt(-q, -q, hh), Pt(q, -q, hh), Pt(q, q, hh), Pt(-q, q, hh)], WHITE, 1.1)
         lab(c, Pt(0, 0, 0)[0], y0 - e * r * sc - 10, f'半径{r:g}cm')
         lab(c, Pt(-r, 0, hh / 2)[0] - 4, Pt(-r, 0, hh / 2)[1], f'{hh:g}cm', anchor='r')
-        lab(c, Pt(q, -q, hh)[0] + 14, Pt(q, -q, hh)[1] - 9, f'1辺{s_:g}cm', 8, 'l')
-        seg(c, Pt(q, -q, hh), (Pt(q, -q, hh)[0] + 13, Pt(q, -q, hh)[1] - 8), .5, None, MUTED)
+        a1 = Pt(q, q, hh)
+        seg(c, a1, (a1[0] + 18, a1[1] + 9), .5, None, MUTED)
+        lab(c, a1[0] + 20, a1[1] + 10, f'1辺{s_:g}cm', 8, 'l')
+
 
     SOLIDS = {'cutbox': sh_cutbox, 'cutcyl': sh_cutcyl, 'cubes': sh_cubes, 'trapprism': sh_trapprism, 'revolve': sh_revolve,
               'pitbox': sh_pitbox, 'triprism': sh_triprism, 'fnotch': sh_fnotch, 'cylhole': sh_cylhole}
